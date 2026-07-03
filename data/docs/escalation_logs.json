@@ -1,0 +1,182 @@
+[
+  {
+    "id": "ESC-001",
+    "date": "2026-01-15",
+    "tier": 1,
+    "category": "Fulfillment",
+    "reason": "Warehouse A fulfillment time 28.3 hrs (above 24 hr target)",
+    "status": "Resolved",
+    "resolution": "Additional staffing deployed, resolved within 24 hrs"
+  },
+  {
+    "id": "ESC-002",
+    "date": "2026-02-14",
+    "tier": 1,
+    "category": "Volume",
+    "reason": "Valentine's Day volume surge 13,200 orders (250% of daily avg)",
+    "status": "Resolved",
+    "resolution": "Surge handled within SLA, no breach"
+  },
+  {
+    "id": "ESC-003",
+    "date": "2026-02-20",
+    "tier": 1,
+    "category": "Fulfillment",
+    "reason": "Warehouse A fulfillment trending up (20.5 hrs)",
+    "status": "Resolved",
+    "resolution": "Monitoring initiated"
+  },
+  {
+    "id": "ESC-004",
+    "date": "2026-02-27",
+    "tier": 2,
+    "category": "Fulfillment",
+    "reason": "Warehouse A fulfillment 21.8 hrs for 2nd week -- staffing shortage",
+    "status": "In Progress",
+    "resolution": "Temp staffing approved, starting Week 12"
+  },
+  {
+    "id": "ESC-005",
+    "date": "2026-03-06",
+    "tier": 2,
+    "category": "Fulfillment",
+    "reason": "Warehouse A p95 fulfillment breached 48hr target (48.5 hrs)",
+    "status": "In Progress",
+    "resolution": "Temp hiring process started"
+  },
+  {
+    "id": "ESC-006",
+    "date": "2026-03-13",
+    "tier": 2,
+    "category": "Fulfillment",
+    "reason": "Warehouse A p95 breach 2nd week (51.2 hrs)",
+    "status": "In Progress",
+    "resolution": "Temp staff onboarding Week 12"
+  },
+  {
+    "id": "ESC-007",
+    "date": "2026-03-20",
+    "tier": 2,
+    "category": "Fulfillment",
+    "reason": "Warehouse A avg fulfillment 24.2 hrs -- breached target",
+    "status": "In Progress",
+    "resolution": "Temps starting next week"
+  },
+  {
+    "id": "ESC-008",
+    "date": "2026-03-22",
+    "tier": 2,
+    "category": "Quality",
+    "reason": "Electronics return rate spike (14.2%) -- potential supplier issue",
+    "status": "Resolved",
+    "resolution": "Defective headphone batch identified, recall initiated"
+  },
+  {
+    "id": "ESC-009",
+    "date": "2026-03-25",
+    "tier": 3,
+    "category": "Quality",
+    "reason": "Electronics return rate critical breach: supplier recall required",
+    "status": "Resolved",
+    "resolution": "COO notified, supplier recall completed"
+  },
+  {
+    "id": "ESC-010",
+    "date": "2026-04-01",
+    "tier": 2,
+    "category": "Technology",
+    "reason": "Mobile app v3.2 CSAT drop (3.7 on mobile channel)",
+    "status": "Resolved",
+    "resolution": "Hotfix v3.2.1 deployed Apr 10"
+  },
+  {
+    "id": "ESC-011",
+    "date": "2026-04-02",
+    "tier": 2,
+    "category": "Fulfillment",
+    "reason": "Warehouse A avg fulfillment 26.1 hrs -- ongoing degradation",
+    "status": "In Progress",
+    "resolution": "Temp staff efficiency at 60%, expected to improve"
+  },
+  {
+    "id": "ESC-012",
+    "date": "2026-04-03",
+    "tier": 3,
+    "category": "Technology",
+    "reason": "Mobile cart abandonment 78% -- revenue impact > $45K",
+    "status": "Resolved",
+    "resolution": "Hotfix deployed, abandonment back to 68%"
+  },
+  {
+    "id": "ESC-013",
+    "date": "2026-04-08",
+    "tier": 3,
+    "category": "Fulfillment",
+    "reason": "Warehouse A p95 at 57.2 hrs -- critical breach 8th week",
+    "status": "In Progress",
+    "resolution": "COO review scheduled, permanent hiring plan needed"
+  },
+  {
+    "id": "ESC-014",
+    "date": "2026-04-15",
+    "tier": 3,
+    "category": "Fulfillment",
+    "reason": "Warehouse A p95 at 58.5 hrs -- worst on record",
+    "status": "In Progress",
+    "resolution": "Permanent hiring plan under discussion"
+  },
+  {
+    "id": "ESC-015",
+    "date": "2026-04-22",
+    "tier": 3,
+    "category": "Fulfillment",
+    "reason": "Warehouse A p95 at 59.8 hrs -- escalation for Q2 planning",
+    "status": "In Progress",
+    "resolution": "Tier-3 escalation active, Q2 planning underway"
+  },
+  {
+    "id": "ESC-016",
+    "date": "2026-06-12",
+    "tier": 2,
+    "category": "Fulfillment",
+    "reason": "Warehouse B conveyor failure (6 hr downtime)",
+    "status": "Resolved",
+    "resolution": "Motor replaced, spare parts policy updated"
+  },
+  {
+    "id": "ESC-017",
+    "date": "2026-06-13",
+    "tier": 1,
+    "category": "Fulfillment",
+    "reason": "Catch-up from Warehouse B conveyor incident (2,500 delayed orders)",
+    "status": "Resolved",
+    "resolution": "All orders fulfilled within extended window"
+  },
+  {
+    "id": "ESC-018",
+    "date": "2026-07-05",
+    "tier": 2,
+    "category": "Technology",
+    "reason": "Payment gateway outage (45 min) -- Stripe rate limit hit",
+    "status": "Resolved",
+    "resolution": "Batch job throttled, PayPal fallback added"
+  },
+  {
+    "id": "ESC-019",
+    "date": "2026-07-06",
+    "tier": 1,
+    "category": "Technology",
+    "reason": "Follow-up on payment gateway incident -- runbook creation",
+    "status": "Resolved",
+    "resolution": "Payment incident runbook created and distributed"
+  },
+  {
+    "id": "ESC-020",
+    "date": "2026-08-01",
+    "tier": 1,
+    "category": "Inventory",
+    "reason": "Home & Garden inventory discrepancy (8% variance at Warehouse B)",
+    "status": "Resolved",
+    "resolution": "Full reconciliation completed, cycle counts reinstated"
+  }
+]

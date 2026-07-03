@@ -1,0 +1,9 @@
+category,subcategories,avg_price,typical_return_rate,seasonal_peak,top_sku
+Electronics,"smartphones,laptops,tablets,accessories,headphones",245.0,12.0,November-December,ELEC-SM-GALAXY-S25
+Clothing,"mens,womens,kids,footwear,accessories",65.0,15.0,"January (post-holiday), September (fall collection)",CLOTH-WM-DRESS-101
+Home & Garden,"furniture,decor,kitchen,garden,tools",120.0,5.0,April-May (spring),HOME-GRDN-TOOLSET-A1
+Books,"fiction,non-fiction,textbooks,childrens",18.0,2.0,August-September (back to school),BOOK-NF-LEADERSHIP-001
+Sports & Outdoors,"fitness,camping,cycling,water-sports",95.0,6.0,May-August,SPORT-FIT-RUNNING-SHOE-X1
+Beauty & Health,"skincare,supplements,personal-care,makeup",35.0,4.0,"February (Valentine's), November (holiday)",BEAUTY-SKIN-SERUM-PRO
+Toys & Games,"educational,board-games,video-games,outdoor-toys",45.0,5.0,November-December,TOYS-VG-CONSOLE-GEN5
+Automotive,"parts,accessories,tools,car-care",85.0,3.0,March-April (spring maintenance),AUTO-PART-BRAKE-PAD-C2

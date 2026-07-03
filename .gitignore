@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+chroma_db/
+memory_store/
+logs/
+.locks/
+feedback_store.json
+*.log
+.DS_Store
