@@ -1,11 +1,28 @@
+# =============================================================================
+# NovaCart AI Operations Copilot – Git Ignore Rules
+# =============================================================================
+
+# Python bytecode cache
 __pycache__/
 *.pyc
 *.pyo
+
+# Environment / secrets (never commit real credentials)
 .env
+
+# Runtime data stores (auto-created by the agent)
 chroma_db/
 memory_store/
+
+# Logs
 logs/
-.locks/
-feedback_store.json
 *.log
+
+# Lock files (created during concurrent runs)
+.locks/
+
+# Feedback store (local JSON file populated during evaluation)
+feedback_store.json
+
+# macOS metadata
 .DS_Store

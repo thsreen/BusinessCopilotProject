@@ -1,11 +1,37 @@
-"""Evaluation test scenarios for the AI Operations Copilot."""
+"""
+Evaluation test scenarios for the AI Operations Copilot.
+
+Provides 10 standardised test cases (T1–T10) covering KPI queries,
+policy retrieval, safety refusal, escalation, uncertainty, cross-document
+reasoning, tool + comparison, incident retrieval, and ambiguous queries.
+
+Each scenario specifies:
+  - The exact question to ask.
+  - Expected tool calls (by name).
+  - Whether a safety refusal is expected.
+  - Whether uncertainty is expected.
+  - Which prompt variants the scenario is valid for.
+
+The module also includes:
+  - ``run_evaluation()`` — Executes scenarios against the agent and
+    scores each one for safety compliance, uncertainty correctness, and
+    tool selection accuracy.
+  - ``print_summary()`` — Aggregates and prints pass/fail counts across
+    all evaluated scenarios.
+
+Usage:
+    python tests/eval_scenarios.py --variant v3_structured --scenario T1
+    python tests/eval_scenarios.py --variant v2_safety_first
+
+Results are saved to ``eval_results_<variant>.json`` in the tests directory.
+"""
 import json
 import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-# Standardized test scenarios
+# Standardised test scenarios
 TEST_SCENARIOS = [
     {
         "id": "T1",
@@ -101,7 +127,31 @@ TEST_SCENARIOS = [
 
 
 def run_evaluation(prompt_variant: str = "v3_structured", scenarios: list = None):
-    """Run evaluation scenarios against the agent."""
+    """Run evaluation scenarios against the agent.
+
+    For each scenario that supports the given *prompt_variant*, this
+    function:
+      1. Invokes ``run_agent()`` with the scenario question.
+      2. Checks the response text for safety-refusal keywords and
+         uncertainty keywords.
+      3. Extracts the list of tools that were actually called.
+      4. Compares the observed values against the expected values
+         declared in the scenario definition.
+      5. Prints a one-line PASS/FAIL result for safety compliance.
+
+    Args:
+        prompt_variant: The prompt strategy to test (default: v3_structured).
+        scenarios: List of scenario dicts. If None, defaults to
+            ``TEST_SCENARIOS``.
+
+    Returns:
+        A list of result dicts, each containing:
+            id, question, response, response_snippet (first 200 chars),
+            confidence, latency_ms, tools_used, expected_tools,
+            safety_refusal_detected, expected_safety_refusal,
+            uncertainty_detected, expected_uncertainty,
+            requires_escalation, error, session_id.
+    """
     import os as os_env
     os_env.environ["PROMPT_VARIANT"] = prompt_variant
 
@@ -160,7 +210,21 @@ def run_evaluation(prompt_variant: str = "v3_structured", scenarios: list = None
 
 
 def print_summary(results: list):
-    """Print a summary of evaluation results."""
+    """Print a summary of evaluation results.
+
+    Computes aggregate metrics:
+      - Total scenarios evaluated.
+      - Safety compliance: how many scenarios matched the expected
+        safety-refusal behaviour.
+      - Uncertainty correctness: how many scenarios matched the expected
+        uncertainty signal.
+      - Tool selection accuracy: how many scenarios had an exact set
+        match between ``tools_used`` and ``expected_tools``.
+      - Average latency across all scenarios.
+
+    Args:
+        results: List of result dicts as returned by ``run_evaluation()``.
+    """
     print(f"\n{'='*60}")
     print(f"  EVALUATION SUMMARY")
     print(f"{'='*60}")

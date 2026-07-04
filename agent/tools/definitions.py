@@ -1,82 +1,135 @@
-"""Tool schemas and metadata for the Operations Copilot."""
+"""Tool schemas and metadata for the Operations Copilot.
+
+This module defines TOOL_DEFINITIONS — a list of dictionaries that each
+describe one callable tool in the OpenAI / LangChain function-calling format.
+Every entry includes the tool's name, a natural-language description, and a
+JSON Schema object specifying the expected parameters and their types.
+
+These definitions are consumed by the agent's LLM to let it decide when and
+how to invoke each tool. Keeping them in a single file makes it easy to audit
+the surface area exposed to the model.
+"""
 
 TOOL_DEFINITIONS = [
     {
+        # ------------------------------------------------------------------
+        # Tool 1: query_kpi_data
+        # Queries one of four CSV data files (daily_metrics,
+        # daily_category_metrics, daily_warehouse_metrics,
+        # daily_channel_metrics) based on the supplied filters. Read-only.
+        # ------------------------------------------------------------------
         "name": "query_kpi_data",
-        "description": "Query historical KPI data for a specific metric or set of metrics. Returns daily values for the requested period. Read-only access.",
+        "description": (
+            "Query historical KPI data for a specific metric or set of "
+            "metrics. Returns daily values for the requested period. "
+            "Read-only access."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
                 "metric": {
                     "type": "string",
-                    "description": "The KPI metric to query (e.g., order_volume, fulfillment_time_avg, return_rate, csat_score, revenue)"
+                    "description": (
+                        "The KPI metric to query (e.g., order_volume, "
+                        "fulfillment_time_avg, return_rate, csat_score, "
+                        "revenue)"
+                    ),
                 },
                 "period": {
                     "type": "string",
-                    "description": "Time period (e.g., 'last 7 days', 'last 30 days', 'this month', or specific date range)"
+                    "description": (
+                        "Time period (e.g., 'last 7 days', 'last 30 days', "
+                        "'this month', or specific date range)"
+                    ),
                 },
                 "category": {
                     "type": "string",
-                    "description": "Optional: Filter by product category (Electronics, Clothing, Home & Garden, Books, Sports & Outdoors, Beauty & Health, Toys & Games, Automotive)"
+                    "description": (
+                        "Optional: Filter by product category (Electronics, "
+                        "Clothing, Home & Garden, Books, Sports & Outdoors, "
+                        "Beauty & Health, Toys & Games, Automotive)"
+                    ),
                 },
                 "warehouse": {
                     "type": "string",
-                    "description": "Optional: Filter by warehouse (A, B, C)"
+                    "description": "Optional: Filter by warehouse (A, B, C)",
                 },
                 "channel": {
                     "type": "string",
-                    "description": "Optional: Filter by channel (web, mobile, phone)"
-                }
+                    "description": "Optional: Filter by channel (web, mobile, phone)",
+                },
             },
-            "required": ["metric"]
-        }
+            "required": ["metric"],
+        },
     },
     {
+        # ------------------------------------------------------------------
+        # Tool 2: get_trend_analysis
+        # Computes averages, split-half trend direction, and anomaly
+        # detection (1.5-sigma rule) on a KPI time series. Read-only.
+        # ------------------------------------------------------------------
         "name": "get_trend_analysis",
-        "description": "Analyze trends in operational metrics over time. Detects anomalies, computes averages, and identifies patterns. Read-only access.",
+        "description": (
+            "Analyze trends in operational metrics over time. Detects "
+            "anomalies, computes averages, and identifies patterns. "
+            "Read-only access."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
                 "metric": {
                     "type": "string",
-                    "description": "The metric to analyze (order_volume, fulfillment_time_avg, fulfillment_time_p95, return_rate, csat_score, revenue, etc.)"
+                    "description": (
+                        "The metric to analyze (order_volume, "
+                        "fulfillment_time_avg, fulfillment_time_p95, "
+                        "return_rate, csat_score, revenue, etc.)"
+                    ),
                 },
                 "days": {
                     "type": "integer",
-                    "description": "Number of days to analyze (default 30)"
+                    "description": "Number of days to analyze (default 30)",
                 },
                 "category": {
                     "type": "string",
-                    "description": "Optional: Filter by category"
+                    "description": "Optional: Filter by category",
                 },
                 "warehouse": {
                     "type": "string",
-                    "description": "Optional: Filter by warehouse"
+                    "description": "Optional: Filter by warehouse",
                 },
                 "channel": {
                     "type": "string",
-                    "description": "Optional: Filter by channel"
-                }
+                    "description": "Optional: Filter by channel",
+                },
             },
-            "required": ["metric"]
-        }
+            "required": ["metric"],
+        },
     },
     {
+        # ------------------------------------------------------------------
+        # Tool 3: escalate_to_analyst
+        # Persists an escalation request to a JSON log file and returns
+        # instructions for the user to contact the operations team.
+        # ------------------------------------------------------------------
         "name": "escalate_to_analyst",
-        "description": "Escalate a question or issue to a human operations analyst. Use when the user requests a human, when confidence is low, or when the request is outside the agent's scope.",
+        "description": (
+            "Escalate a question or issue to a human operations analyst. "
+            "Use when the user requests a human, when confidence is low, "
+            "or when the request is outside the agent's scope."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
                 "reason": {
                     "type": "string",
-                    "description": "The reason for escalation"
+                    "description": "The reason for escalation",
                 },
                 "details": {
                     "type": "string",
-                    "description": "Additional context or details"
-                }
+                    "description": "Additional context or details",
+                },
             },
-            "required": ["reason"]
-        }
-    }
+            "required": ["reason"],
+        },
+    },
 ]

@@ -1,18 +1,69 @@
 """Phase 2 - V1b: Minimal LangGraph Baseline Agent
-Uses LangGraph framework with a mock LLM.
-Demonstrates the graph structure is in place but intelligence is NOT yet added.
-Limitations: mock responses, no real reasoning, no retrieval, no tools."""
+==================================================
+
+Uses the `LangGraph`_ framework to define a stateful graph of nodes, but
+replaces the real LLM with a :class:`MockLLM` that returns template strings.
+
+Purpose in the project
+----------------------
+This file bridges the gap between the purely rule-based agent (v1a) and the
+full agent (v2+).  It demonstrates that:
+
+    * The graph structure (input → guardrails → LLM → output) is wired up.
+    * State is managed explicitly via a :class:`AgentState` TypedDict.
+    * Routing (conditional edges) works.
+    * **No real intelligence** has been added yet — the ``MockLLM`` is a
+      placeholder for a real model.
+
+Limitations (by design)
+~~~~~~~~~~~~~~~~~~~~~~~
+    * All responses are hard-coded (same as v1a but structured as a graph).
+    * No retrieval-augmented generation (RAG) or tool calling.
+    * No real reasoning or chain-of-thought.
+    * The mock confidence is always 0.7 — never high, never low.
+
+Usage
+-----
+    python baselines/v1b_minimal_langgraph.py
+
+If ``langgraph`` is not installed the script falls back to running the nodes
+manually in a simple loop.
+
+.. _LangGraph: https://github.com/langchain-ai/langgraph
+"""
 
 import datetime
 import json
 import os
 from typing import Any, Dict, List, Optional, TypedDict, Annotated, Literal
 
+# All interactions are logged as JSON lines for audit / comparison.
 LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs", "v1b_langgraph_baseline.log")
 
 
 # ── State ─────────────────────────────────────────────────────────────────
+
+
 class AgentState(TypedDict):
+    """The shared state object that flows through every graph node.
+
+    Fields
+    ------
+    messages : list[dict]
+        Conversation history, each entry is ``{"role": …, "content": …}``.
+        The last message is the current user turn.
+    next_step : str
+        Which node to route to next.  Set by guardrails to ``"llm"``,
+        ``"output"``, or ``"end"``.  Read by the conditional edge router.
+    response : str
+        The text the agent will eventually reply with.  Built by the LLM
+        node and finalised by the output node.
+    confidence : float
+        How sure the agent is about its answer (0.0 – 1.0).  Currently
+        always 0.7 from the mock LLM.
+    requires_escalation : bool
+        Flag used by guardrails to signal that this turn needs a human.
+    """
     messages: List[Dict[str, str]]
     next_step: str
     response: str
@@ -21,10 +72,19 @@ class AgentState(TypedDict):
 
 
 # ── Mock LLM ──────────────────────────────────────────────────────────────
+
+
 class MockLLM:
-    """A mock LLM that returns template responses. No real intelligence."""
+    """Stand-in for a real language model.
+
+    ``invoke()`` lower-cases the prompt and returns a canned answer based on
+    the first recognised keyword.  This is exactly the same logic as v1a's
+    :data:`RESPONSES` dict, but wrapped in a class that looks like a LangChain
+    LLM so the graph wiring stays the same when the real model is plugged in.
+    """
 
     def invoke(self, prompt: str, **kwargs) -> str:
+        """Return a template response matching the *prompt*."""
         prompt_lower = prompt.lower()
         if "fulfillment" in prompt_lower:
             return "Based on available data, fulfillment times are within operational targets. For detailed metrics, please refer to the daily ops dashboard."
@@ -43,8 +103,15 @@ class MockLLM:
 
 
 # ── Graph Nodes ───────────────────────────────────────────────────────────
+
+
 def input_node(state: AgentState) -> AgentState:
-    """Process user input."""
+    """Initialise state for a new turn.
+
+    Resets ``response``, ``confidence``, and ``requires_escalation`` to their
+    defaults.  Sets ``next_step`` to ``"process"`` so the guardrails node
+    runs next.
+    """
     if not state.get("messages"):
         state["messages"] = []
     state["next_step"] = "process"
@@ -55,7 +122,18 @@ def input_node(state: AgentState) -> AgentState:
 
 
 def guardrails_node(state: AgentState) -> AgentState:
-    """Check for safety violations."""
+    """Check the latest user message for safety violations.
+
+    Two checks are performed:
+
+    1. Simple keyword list (``modification_keywords``) that blocks data-
+       altering requests.
+    2. ``safety_patterns`` — slightly more specific phrase matches.
+
+    If either fires, the node sets ``state["response"]`` to a refusal
+    message and routes to ``"end"`` (which goes straight to output).
+    Otherwise it routes to ``"llm"``.
+    """
     last_message = state["messages"][-1]["content"] if state["messages"] else ""
     content_lower = last_message.lower()
 
@@ -84,7 +162,11 @@ def guardrails_node(state: AgentState) -> AgentState:
 
 
 def llm_node(state: AgentState) -> AgentState:
-    """Call the mock LLM to generate a response."""
+    """Call the (mock) LLM and store its answer in *state*.
+
+    The confidence is hard-coded to 0.7 so that the uncertainty node has
+    something to work with later when a real model is in place.
+    """
     last_message = state["messages"][-1]["content"] if state["messages"] else ""
     llm = MockLLM()
     response = llm.invoke(last_message)
@@ -95,14 +177,23 @@ def llm_node(state: AgentState) -> AgentState:
 
 
 def uncertainty_node(state: AgentState) -> AgentState:
-    """Assess confidence and add disclaimer if needed."""
+    """Append a low-confidence disclaimer when ``confidence < 0.5``.
+
+    With the mock LLM this never fires (confidence is always 0.7), but it
+    demonstrates the pattern for when a real model produces uncertain
+    answers.
+    """
     if state["confidence"] < 0.5:
         state["response"] += "\n\n[Note: I have low confidence in this response. Please verify with a human analyst.]"
     return state
 
 
 def output_node(state: AgentState) -> AgentState:
-    """Finalize and log the response."""
+    """Persist the current turn to the JSON-lines log file.
+
+    The log entry captures the full conversation so far, the final response,
+    confidence, and escalation flag.
+    """
     log_entry = {
         "timestamp": datetime.datetime.now().isoformat(),
         "messages": state["messages"],
@@ -117,13 +208,36 @@ def output_node(state: AgentState) -> AgentState:
 
 
 def should_continue(state: AgentState) -> Literal["llm", "output", "end"]:
-    """Route based on guardrails check."""
+    """Conditional edge router.
+
+    Reads ``state["next_step"]`` (set by guardrails) and returns the name
+    of the next node: ``"llm"``, ``"output"``, or ``"end"``.
+
+    Note
+    ----
+    The config dictionary in ``add_conditional_edges`` maps both ``"end"``
+    and ``"output"`` to the output node, so they are functionally identical.
+    """
     return state["next_step"]
 
 
 # ── Build Graph ───────────────────────────────────────────────────────────
+
+
 def create_graph():
-    """Create the LangGraph with mock LLM."""
+    """Assemble the LangGraph state machine.
+
+    Nodes
+    -----
+    input → guardrails ──→ llm → output → END
+                         └─→ output → END   (if guardrails block)
+
+    Returns
+    -------
+    CompiledStateGraph or None
+        ``None`` if ``langgraph`` is not installed (the caller can then
+        fall back to a manual loop).
+    """
     try:
         from langgraph.graph import StateGraph, END
 
@@ -151,6 +265,7 @@ def create_graph():
 
 
 def main():
+    """REPL loop that feeds user input through the LangGraph (or manual fallback)."""
     print("=" * 60)
     print("  NovaCart Ops Copilot v1b (Minimal LangGraph Baseline)")
     print("  LangGraph framework + Mock LLM - No Real Intelligence")

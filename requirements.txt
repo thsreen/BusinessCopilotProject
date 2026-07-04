@@ -1,16 +1,33 @@
-langgraph>=0.2.0
-langchain-core>=0.3.0
-langchain-community>=0.3.0
-langchain-openai>=0.2.0
-langchain-ollama>=0.2.0
-chromadb>=0.5.0
-sentence-transformers>=2.2.0
-openai>=1.0.0
-fastapi>=0.100.0
-uvicorn>=0.20.0
-pydantic>=2.0.0
-pandas>=2.0.0
-numpy>=1.24.0
-python-dotenv>=1.0.0
-httpx>=0.25.0
-tiktoken>=0.5.0
+# =============================================================================
+# NovaCart AI Operations Copilot – pip Requirements
+# =============================================================================
+# Install with:  pip install -r requirements.txt
+# For an editable (development) install, also run:  pip install -e .
+
+# ── LangGraph & LangChain ecosystem ────────────────────────────────────────
+langgraph>=0.2.0          # State-graph orchestration framework
+langchain-core>=0.3.0     # Base abstractions (runnables, prompts, output parsers)
+langchain-community>=0.3.0  # Community integrations (Chroma vector store, etc.)
+langchain-openai>=0.2.0   # OpenAI / Azure OpenAI chat model wrapper
+langchain-ollama>=0.2.0   # Ollama local model wrapper
+
+# ── Vector store & embeddings ─────────────────────────────────────────────
+chromadb>=0.5.0           # Chroma vector database (used for RAG retrieval)
+sentence-transformers>=2.2.0  # Local embedding models (fallback when no API)
+
+# ── LLM API ───────────────────────────────────────────────────────────────
+openai>=1.0.0             # Official OpenAI Python SDK
+
+# ── Web API (evaluation UI / agent endpoints) ─────────────────────────────
+fastapi>=0.100.0          # REST API framework
+uvicorn>=0.20.0           # ASGI server for FastAPI
+
+# ── Data processing & validation ──────────────────────────────────────────
+pydantic>=2.0.0           # Data validation (settings, schemas, type coercion)
+pandas>=2.0.0             # Tabular data analysis / CSV I/O
+numpy>=1.24.0             # Numerical operations
+
+# ── Utilities ─────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0      # Load environment variables from .env file
+httpx>=0.25.0             # Async HTTP client (for external API calls)
+tiktoken>=0.5.0           # Token counting for OpenAI models (cost estimation)

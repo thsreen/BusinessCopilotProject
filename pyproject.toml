@@ -1,23 +1,43 @@
+# =============================================================================
+# NovaCart AI Operations Copilot – Project Metadata & Dependencies
+# =============================================================================
+# PEP 621 project configuration.  Install with:
+#   pip install -e .
+
 [project]
+# ── Package identity ───────────────────────────────────────────────────────
 name = "ai-operations-copilot"
 version = "1.0.0"
 description = "AI Operations Copilot — Business Decision Support Agent"
-requires-python = ">=3.11"
+requires-python = ">=3.11"              # Uses | syntax for types & match/case
+
+# ── Runtime dependencies ──────────────────────────────────────────────────
 dependencies = [
-    "langgraph>=0.2.0",
-    "langchain-core>=0.3.0",
-    "langchain-community>=0.3.0",
-    "langchain-openai>=0.2.0",
-    "langchain-ollama>=0.2.0",
-    "chromadb>=0.5.0",
-    "sentence-transformers>=2.2.0",
-    "openai>=1.0.0",
-    "fastapi>=0.100.0",
-    "uvicorn>=0.20.0",
-    "pydantic>=2.0.0",
-    "pandas>=2.0.0",
-    "numpy>=1.24.0",
-    "python-dotenv>=1.0.0",
-    "httpx>=0.25.0",
-    "tiktoken>=0.5.0",
+    # -- LangGraph & LangChain ecosystem ------------------------------------
+    "langgraph>=0.2.0",                  # State-graph orchestration framework
+    "langchain-core>=0.3.0",            # Base abstractions (runnables, prompts)
+    "langchain-community>=0.3.0",       # Community integrations (Chroma, etc.)
+    "langchain-openai>=0.2.0",          # OpenAI / Azure OpenAI model wrapper
+    "langchain-ollama>=0.2.0",          # Ollama local model wrapper
+
+    # -- Vector store & embeddings ------------------------------------------
+    "chromadb>=0.5.0",                  # Vector database (RAG retrieval)
+    "sentence-transformers>=2.2.0",     # Local embedding models (fallback)
+
+    # -- LLM API ------------------------------------------------------------
+    "openai>=1.0.0",                    # Official OpenAI Python SDK
+
+    # -- Web API (for potential agent endpoints / evaluation UI) ------------
+    "fastapi>=0.100.0",                 # REST API framework
+    "uvicorn>=0.20.0",                  # ASGI server
+
+    # -- Data processing ----------------------------------------------------
+    "pydantic>=2.0.0",                  # Data validation (settings, schemas)
+    "pandas>=2.0.0",                    # Tabular data analysis / CSV processing
+    "numpy>=1.24.0",                    # Numerical operations
+
+    # -- Utilities ----------------------------------------------------------
+    "python-dotenv>=1.0.0",             # Load .env files
+    "httpx>=0.25.0",                    # Async HTTP client (API calls)
+    "tiktoken>=0.5.0",                  # Token counting (OpenAI models)
 ]

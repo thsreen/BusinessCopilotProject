@@ -1,4 +1,23 @@
-"""Main LangGraph StateGraph definition for the AI Operations Copilot."""
+"""
+Main LangGraph StateGraph definition for the AI Operations Copilot.
+
+This module wires together the 9 graph nodes into a directed cyclic graph
+managed by LangGraph. The execution flow is:
+
+  input -> guardrails -> router -> {retrieval, tools, llm} -> llm ->
+  uncertainty -> feedback -> response -> END
+
+Two conditional routing functions (`should_route`, `after_retrieval`) decide
+which branch to follow based on the `next_step` field in AgentState and on
+document-availability / query-keyword heuristics respectively.
+
+The public entry point `run_agent()` builds the graph once (lazy singleton),
+invokes it synchronously, and returns the final AgentState as a plain dict.
+
+Global singletons:
+  - _memory (MemoryManager): long-term and short-term conversation storage.
+  - _compiled_graph (CompiledStateGraph): cached after the first build.
+"""
 import os
 import time
 import json
@@ -27,7 +46,26 @@ _compiled_graph = None
 
 
 def input_node(state: AgentState) -> AgentState:
-    """Process and validate incoming user input."""
+    """Process and validate incoming user input, initialise/reset state fields.
+
+    This node runs first on every invocation. It:
+      1. Extracts `user_input` from the state or the last message.
+      2. Resets all volatile fields to safe defaults so that no stale data
+         from a previous turn leaks through.
+      3. Clears the response cache when the user provides feedback (forcing
+         a fresh generation so the feedback is taken into account).
+      4. Creates a new session via `MemoryManager.create_session()` if one
+         does not already exist.
+      5. Persists the user message into the memory store.
+
+    Args:
+        state: The incoming AgentState; may be partially populated from a
+            previous turn (e.g. session_id, feedback).
+
+    Returns:
+        The mutated AgentState with fresh defaults and the user message
+        appended to memory.
+    """
     user_input = state.get("user_input", "")
     if not user_input and state.get("messages"):
         user_input = state["messages"][-1].get("content", "")
@@ -64,7 +102,21 @@ def input_node(state: AgentState) -> AgentState:
 
 
 def response_node(state: AgentState) -> AgentState:
-    """Format the final response and add memory context."""
+    """Format the final response and persist it to memory.
+
+    This node runs just before the END node. It:
+      1. Attaches long-term memory context to the state (if available and
+         not already present).
+      2. Appends a low-confidence disclaimer when confidence < 0.4.
+      3. Logs the assistant response into the memory store.
+
+    Args:
+        state: The incoming AgentState containing the LLM response and
+            confidence score.
+
+    Returns:
+        The mutated AgentState, ready for END.
+    """
     response = state.get("response", "")
 
     # Add memory context hint if available
@@ -87,7 +139,27 @@ def response_node(state: AgentState) -> AgentState:
 
 
 def should_route(state: AgentState) -> Literal["retrieval", "tools", "llm", "uncertainty", "end"]:
-    """Route after guardrails."""
+    """Route after guardrails.
+
+    Reads the `next_step` field and maps it to the next graph node.
+    This is the primary routing function used by both the "guardrails"
+    and "router" conditional edges.
+
+    Routing logic:
+      - "end"            -> "end" (skip to response formatting)
+      - "router"         -> checks step again (delegates to retrieval/tools/llm)
+      - "retrieval"      -> "retrieval"
+      - "tools"          -> "tools"
+      - "uncertainty"    -> "uncertainty"
+      - "feedback"       -> "uncertainty"  (feedback flows through uncertainty)
+      - anything else    -> "llm" (safe fallback)
+
+    Args:
+        state: The current AgentState; only `next_step` is inspected.
+
+    Returns:
+        The literal name of the next graph node.
+    """
     step = state.get("next_step", "end")
 
     if step == "end":
@@ -115,9 +187,25 @@ def should_route(state: AgentState) -> Literal["retrieval", "tools", "llm", "unc
 
 def after_retrieval(state: AgentState) -> Literal["tools", "llm", "uncertainty"]:
     """Route after retrieval to determine if tools are also needed.
+
     If retrieval found relevant documents, go to LLM for synthesis.
     Only go to tools if retrieval was empty AND the query clearly needs KPI data.
-    On error, go to LLM for graceful error messaging."""
+    On error, go to LLM for graceful error messaging.
+
+    Heuristic for tool-forcing:
+      - If `retrieved_docs` is non-empty → go directly to LLM.
+      - If `retrieved_docs` is empty and the query contains KPI-related
+        keywords such as "kpi", "metric", "how many" → route to tools
+        so the agent can fetch live data.
+      - Otherwise → route to uncertainty, since we have neither docs
+        nor a clear data-fetching intent.
+
+    Args:
+        state: AgentState with `error`, `retrieved_docs`, and `user_input` set.
+
+    Returns:
+        One of "tools", "llm", or "uncertainty".
+    """
     if state.get("error"):
         return "llm"
 
@@ -136,7 +224,32 @@ def after_retrieval(state: AgentState) -> Literal["tools", "llm", "uncertainty"]
 
 
 def build_graph():
-    """Build and compile the LangGraph."""
+    """Build and compile the LangGraph.
+
+    Assembles the 9-node StateGraph with conditional edges and compiles it.
+    The graph topology is:
+
+        input ──▶ guardrails ──▶ (should_route)
+                                   ├── router ──▶ (should_route)
+                                   │                ├── retrieval ──▶ (after_retrieval)
+                                   │                │                  ├── tools
+                                   │                │                  ├── llm
+                                   │                │                  └── uncertainty
+                                   │                ├── tools
+                                   │                ├── llm
+                                   │                ├── uncertainty
+                                   │                └── end ──▶ response ──▶ END
+                                   ├── tools
+                                   ├── llm
+                                   ├── uncertainty
+                                   └── end ──▶ response ──▶ END
+
+        tools ──▶ (after_tools: if escalation_handled → uncertainty, else llm)
+        llm   ──▶ uncertainty ──▶ feedback ──▶ response ──▶ END
+
+    Returns:
+        A compiled `langgraph.graph.graph.CompiledStateGraph` ready to invoke.
+    """
     from langgraph.graph import StateGraph, END
 
     graph = StateGraph(AgentState)
@@ -220,7 +333,53 @@ def build_graph():
 
 def run_agent(user_input: str, session_id: str = None, feedback: str = None,
               prompt_variant: str = None) -> dict:
-    """Run the agent with the given input and return the result."""
+    """Run the agent with the given input and return the result.
+
+    This is the public entry point used by the CLI (`deploy/cli.py`), the
+    FastAPI server (`deploy/api.py`), and the evaluation harness.
+
+    The function:
+      1. Sets the `PROMPT_VARIANT` environment variable if provided.
+      2. Builds the graph on first call (lazy singleton; subsequent calls
+         reuse the compiled graph).
+      3. Constructs a fresh `AgentState` with all fields initialised.
+      4. Invokes the graph synchronously with `app.invoke(state)`.
+      5. Measures wall-clock latency and attaches it as `total_latency_ms`.
+      6. On any exception, logs the error and returns a safe fallback dict.
+
+    Args:
+        user_input: The raw question or command from the user.
+        session_id: Optional session identifier for memory continuity.
+            If None or empty, a new session is created inside the graph.
+        feedback: Optional feedback signal ("positive" or "negative") to
+            trigger the auto-tuning / adaptation loop. When provided the
+            response cache is cleared for this session.
+        prompt_variant: Optional name of the prompt strategy to use
+            ("v1_minimal", "v2_safety_first", "v3_structured"). If None,
+            the current value of the PROMPT_VARIANT env var is used.
+
+    Returns:
+        A dict containing the full result state with keys:
+            "response" (str),
+            "session_id" (str),
+            "confidence" (float),
+            "total_latency_ms" (float),
+            "cached" (bool),
+            "requires_escalation" (bool),
+            "escalation_reason" (str),
+            "adaptation_applied" (Optional[str]),
+            "tool_calls" (list),
+            "tool_results" (list),
+            "error" (Optional[str]),
+            and all other AgentState fields.
+
+        On failure a minimal dict is returned with:
+            "response": error message for the end-user,
+            "error": raw exception string,
+            "total_latency_ms": elapsed time,
+            "session_id": the provided session_id,
+            "confidence": 0.0.
+    """
     if prompt_variant:
         os.environ["PROMPT_VARIANT"] = prompt_variant
 

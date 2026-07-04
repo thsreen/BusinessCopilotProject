@@ -1,15 +1,50 @@
 """Phase 2 - V1a: Rule-Based Baseline Agent
-Pure keyword-matching agent. No LLM, no LangGraph.
-Demonstrates limitations: brittle, no understanding, no safety, no memory of context."""
+============================================
+
+Pure keyword-matching agent.  No LLM, no LangGraph, no external API calls.
+
+Purpose in the project
+----------------------
+This file defines the simplest possible "assistant" so we can contrast it
+against more sophisticated versions (v1b, v2, etc.).  It demonstrates the
+limitations of a purely rule-based approach:
+
+    * Brittle matching – "fulfillment time" works but "how long to ship" does not.
+    * No natural-language understanding – synonyms, typos, and paraphrases all fail.
+    * No memory of conversation context – each turn is independent.
+    * No safety reasoning – refusals are also keyword-based and easily bypassed.
+    * No integration with real data – all responses are hard-coded strings.
+
+Usage
+-----
+    python baselines/v1a_rule_based.py
+
+Then type questions at the prompt.  Type ``quit``, ``exit``, or ``bye`` to stop.
+
+File location
+-------------
+This file lives under ``baselines/`` to keep it separate from the main
+application code in ``src/``."""
 
 import datetime
 import json
 import os
 import re
 
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+# All interactions (user input, response, match method) are appended as JSON
+# lines to this file so we can audit and compare baseline vs. agent behaviour.
 LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs", "v1a_baseline.log")
 
-# Template responses keyed by keyword
+# ---------------------------------------------------------------------------
+# Response dictionary
+# ---------------------------------------------------------------------------
+
+# Maps a keyword (or phrase) to a canned answer.  The first keyword found in
+# the user's lower-cased input wins.
 RESPONSES = {
     "fulfillment": "Fulfillment time is currently within acceptable range. For specific numbers, please check the daily KPI dashboard.",
     "return rate": "The return rate is monitored daily. Current return rate is within the 8% target threshold.",
@@ -24,13 +59,19 @@ RESPONSES = {
     "help": "I can answer questions about: fulfillment, return rates, CSAT, order volume, warehouses, KPIs, and more. Just ask!",
 }
 
-# Escalation keywords (to trigger "escalate" response)
+# ---------------------------------------------------------------------------
+# Safety / refusal machinery
+# ---------------------------------------------------------------------------
+
+# Words that suggest the user wants to talk to a human (→ escalate).
 ESCALATION_KEYWORDS = ["escalate", "human", "manager", "supervisor", "complaint", "urgent"]
 
-# Refusal keywords (data modification requests)
+# Words that suggest the user is trying to modify data (→ refuse).
 REFUSAL_KEYWORDS = ["update", "change", "modify", "delete", "remove", "set", "override"]
 
-# Safety violations - requests the agent must refuse
+# (regex_pattern, refusal_message) pairs checked *before* any keyword match.
+# These catch common "do something destructive" phrases with more nuance than
+# the simple keyword list above.
 SAFETY_PATTERNS = [
     (r"change\s+(the\s+)?(return|policy|rule|kpi|target)", "I cannot modify data or policies. This is a decision-support only system."),
     (r"update\s+(the\s+)?(data|record|order|inventory)", "I cannot modify data. Please contact an operations analyst for changes."),
@@ -40,7 +81,19 @@ SAFETY_PATTERNS = [
 
 
 def log_interaction(user_input: str, response: str, method: str = "rule_match"):
-    """Log the interaction to a file."""
+    """Append one interaction to the JSON-lines log file.
+
+    Parameters
+    ----------
+    user_input : str
+        The raw text the user typed.
+    response : str
+        The text the assistant replied with.
+    method : str
+        How the response was produced — ``"rule_match"``, ``"safety_refusal"``,
+        ``"escalation"``, or ``"fallback"``.  This makes it easy to analyse
+        later which code path fired for each query.
+    """
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     entry = {
         "timestamp": datetime.datetime.now().isoformat(),
@@ -53,7 +106,20 @@ def log_interaction(user_input: str, response: str, method: str = "rule_match"):
 
 
 def check_safety(user_input: str) -> str | None:
-    """Check if the input violates safety rules. Returns refusal message or None."""
+    """Test *user_input* against known refusal patterns.
+
+    Two layers are checked (in order):
+
+    1. ``SAFETY_PATTERNS`` — regex-based checks that catch multi-word
+       destructive phrases (e.g. "change the return policy").
+    2. ``REFUSAL_KEYWORDS`` — simple substring checks for verbs like
+       "delete", "override", etc.
+
+    Returns
+    -------
+    str or None
+        A refusal message if a pattern matched, else ``None``.
+    """
     user_input_lower = user_input.lower()
     for pattern, refusal_msg in SAFETY_PATTERNS:
         if re.search(pattern, user_input_lower):
@@ -65,7 +131,11 @@ def check_safety(user_input: str) -> str | None:
 
 
 def check_escalation(user_input: str) -> str | None:
-    """Check if the user is asking for escalation."""
+    """Decide whether the user is asking to speak to a human.
+
+    If any of the ``ESCALATION_KEYWORDS`` appear in the input, return a
+    canned escalation message.  Otherwise return ``None``.
+    """
     user_input_lower = user_input.lower()
     for kw in ESCALATION_KEYWORDS:
         if kw in user_input_lower:
@@ -74,7 +144,18 @@ def check_escalation(user_input: str) -> str | None:
 
 
 def get_response(user_input: str) -> str:
-    """Get a response based on keyword matching."""
+    """Produce a reply for *user_input* using a strict priority chain.
+
+    Priority (first match wins)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    1. Safety refusal (regex, then keyword)
+    2. Escalation request
+    3. Keyword match against ``RESPONSES``
+    4. Generic fallback ("I don't know")
+
+    Every path calls :func:`log_interaction` so the session can be replayed
+    or analysed later.
+    """
     # 1. Check safety
     safety_msg = check_safety(user_input)
     if safety_msg:
@@ -101,6 +182,7 @@ def get_response(user_input: str) -> str:
 
 
 def main():
+    """REPL loop: read a line, reply via :func:`get_response`, repeat."""
     print("=" * 60)
     print("  NovaCart Ops Assistant v1a (Rule-Based Baseline)")
     print("  Decision Support Only - Read Only System")

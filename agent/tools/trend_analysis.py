@@ -1,18 +1,84 @@
-"""Tool: Analyze trends in KPI data over time."""
+"""Tool: Analyze trends in KPI data over time.
+
+Computes descriptive statistics, split-half trend direction, and anomaly
+detection for a requested KPI metric over a configurable look-back window.
+
+This module reuses the *load_csv*, *resolve_metric*, and file-path constants
+from the *query_kpi* module so that data-loading behaviour stays consistent
+across tools.
+"""
 import csv
 import os
 from datetime import datetime, timedelta
-from agent.tools.query_kpi import load_csv, resolve_metric, METRICS_FILE, CATEGORY_FILE, WAREHOUSE_FILE, CHANNEL_FILE
+from agent.tools.query_kpi import (
+    load_csv,
+    resolve_metric,
+    METRICS_FILE,
+    CATEGORY_FILE,
+    WAREHOUSE_FILE,
+    CHANNEL_FILE,
+)
 
 
-def get_trend_analysis(query: str = "", metric: str = "", days: int = 30,
-                        category: str = "", warehouse: str = "", channel: str = "") -> dict:
-    """Analyze trends for a given metric."""
+def get_trend_analysis(
+    query: str = "",
+    metric: str = "",
+    days: int = 30,
+    category: str = "",
+    warehouse: str = "",
+    channel: str = "",
+) -> dict:
+    """Analyze trends for a given metric over a recent time window.
+
+    The function:
+        1. Selects the appropriate CSV source (category / warehouse / channel /
+           aggregate) and date range.
+        2. Extracts the target metric column's values.
+        3. Splits the series in half and compares the averages to determine
+           trend direction (up / down / stable).
+        4. Detects anomalies as values more than 1.5 standard deviations from
+           the mean.
+
+    Args:
+        query:    Free-text metric description (used when *metric* is empty).
+                  Delegated to *agent.tools.query_kpi.resolve_metric*.
+        metric:   Canonical CSV column name; takes precedence over *query*.
+        days:     Number of days to look back from today (default 30).
+                  If the data is from 2026 and the current date exceeds the
+                  available range, the entire 2026-H1 window is used instead.
+        category: If non-empty, query *daily_category_metrics.csv* and filter
+                  by this category (case-insensitive).
+        warehouse:If non-empty, query *daily_warehouse_metrics.csv* and filter
+                  by this warehouse letter (case-insensitive).
+        channel:  If non-empty, query *daily_channel_metrics.csv* and filter
+                  by this channel name (case-insensitive).
+
+    Returns:
+        A dictionary with keys:
+            - metric           : The resolved column name.
+            - period           : ``{"start": ..., "end": ...}``.
+            - data_points      : Number of observations.
+            - average          : Mean of all values (rounded to 2 dp).
+            - trend_direction  : ``"up"``, ``"down"``, or ``"stable"``.
+            - pct_change       : Percentage change between the two halves.
+            - first_half_avg   : Average of the first half (rounded to 2 dp).
+            - second_half_avg  : Average of the second half (rounded to 2 dp).
+            - min              : Minimum observed value.
+            - max              : Maximum observed value.
+            - anomalies_detected : Count of outlier data points.
+            - anomaly_dates    : Up to 5 dates with anomalous values.
+            - latest_trend     : A human-readable summary string.
+
+        If insufficient data is available (< 2 points) the result includes
+        an ``"error"`` key and the raw values.
+    """
+    # Resolve metric name – explicit parameter wins over free-text query
     if metric:
         metric_name = metric
     else:
         metric_name, _ = resolve_metric(query)
 
+    # Select CSV data source (same priority logic as query_kpi)
     if category:
         data = load_csv(CATEGORY_FILE)
         data = [r for r in data if r.get("category", "").lower() == category.lower()]
@@ -30,7 +96,9 @@ def get_trend_analysis(query: str = "", metric: str = "", days: int = 30,
     start_date = start_dt.strftime("%Y-%m-%d")
     end_date = today_dt.strftime("%Y-%m-%d")
 
-    # If data is 2026 data and today is 2026, use it; otherwise use all available
+    # Guard: if the earliest record is *after* today (e.g. the dataset is
+    # frozen at 2026 and today is 2025/2026), fall back to the full 2026
+    # window so we don't return an empty result.
     if data and data[0].get("date", "") > end_date:
         start_date = "2026-01-01"
         end_date = "2026-06-30"
@@ -41,40 +109,62 @@ def get_trend_analysis(query: str = "", metric: str = "", days: int = 30,
     if not filtered:
         return {"error": f"No data found for {metric_name}", "metric": metric_name}
 
+    # Parse the column values into a list of {date, value} dicts
     values = []
     for row in filtered:
         val = row.get(metric_name)
         if val:
             try:
-                values.append({"date": row["date"], "value": float(val) if "." in val else int(val)})
+                values.append(
+                    {
+                        "date": row["date"],
+                        "value": float(val) if "." in val else int(val),
+                    }
+                )
             except (ValueError, TypeError):
                 continue
 
     if len(values) < 2:
-        return {"metric": metric_name, "error": "Not enough data points for trend analysis",
-                "data": values}
+        return {
+            "metric": metric_name,
+            "error": "Not enough data points for trend analysis",
+            "data": values,
+        }
 
     numeric_vals = [v["value"] for v in values]
-    first_half = numeric_vals[:len(numeric_vals)//2]
-    second_half = numeric_vals[len(numeric_vals)//2:]
+
+    # Split the series in half for a simple directional comparison
+    first_half = numeric_vals[: len(numeric_vals) // 2]
+    second_half = numeric_vals[len(numeric_vals) // 2 :]
 
     avg_first = sum(first_half) / len(first_half) if first_half else 0
     avg_second = sum(second_half) / len(second_half) if second_half else 0
 
+    # Percentage change from the first half to the second half
     pct_change = ((avg_second - avg_first) / avg_first * 100) if avg_first else 0
 
-    # Detect anomalies (values > 1.5 std dev from mean)
+    # Anomaly detection: values more than 1.5 standard deviations from the mean
     mean = sum(numeric_vals) / len(numeric_vals)
     variance = sum((x - mean) ** 2 for x in numeric_vals) / len(numeric_vals)
     std_dev = variance ** 0.5
-    anomalies = [v for v in values if abs(v["value"] - mean) > 1.5 * std_dev]
+    anomalies = [
+        v for v in values if abs(v["value"] - mean) > 1.5 * std_dev
+    ]
+
+    # Classify trend: use a ±1% deadband to avoid flagging tiny fluctuations
+    if pct_change > 1:
+        trend_dir = "up"
+    elif pct_change < -1:
+        trend_dir = "down"
+    else:
+        trend_dir = "stable"
 
     return {
         "metric": metric_name,
         "period": {"start": values[0]["date"], "end": values[-1]["date"]},
         "data_points": len(values),
         "average": round(mean, 2),
-        "trend_direction": "up" if pct_change > 1 else ("down" if pct_change < -1 else "stable"),
+        "trend_direction": trend_dir,
         "pct_change": round(pct_change, 2),
         "first_half_avg": round(avg_first, 2),
         "second_half_avg": round(avg_second, 2),
@@ -82,6 +172,8 @@ def get_trend_analysis(query: str = "", metric: str = "", days: int = 30,
         "max": round(max(numeric_vals), 2),
         "anomalies_detected": len(anomalies),
         "anomaly_dates": [a["date"] for a in anomalies[:5]],
-        "latest_trend": f"{'Increasing' if pct_change > 1 else 'Decreasing' if pct_change < -1 else 'Stable'} "
-                        f"({abs(round(pct_change, 1))}% change over period)",
+        "latest_trend": (
+            f"{'Increasing' if pct_change > 1 else 'Decreasing' if pct_change < -1 else 'Stable'} "
+            f"({abs(round(pct_change, 1))}% change over period)"
+        ),
     }
