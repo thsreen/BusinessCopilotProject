@@ -84,6 +84,7 @@ def input_node(state: AgentState) -> AgentState:
     state["latency_ms"] = 0.0
     state["adaptation_applied"] = None
     state["cached"] = False
+    state["classification"] = None
 
     # Invalidate cache if feedback is provided (force fresh response)
     feedback = state.get("feedback")
@@ -219,6 +220,11 @@ def after_retrieval(state: AgentState) -> Literal["tools", "llm", "uncertainty"]
                        "return rate", "units shipped", "fulfillment time",
                        "csat", "revenue", "average", "how many", "how much"]
     if any(kw in user_text for kw in tool_indicators):
+        return "tools"
+
+    # Fallback: if the LLM-based router classified this as a tools query
+    # but no static keywords matched, still route to tools.
+    if state.get("classification") == "tools":
         return "tools"
 
     return "uncertainty"
@@ -406,6 +412,7 @@ def run_agent(user_input: str, session_id: str = None, feedback: str = None,
         adaptation_data={},
         adaptation_applied=None,
         cached=False,
+        classification=None,
         error=None,
         latency_ms=0.0,
     )

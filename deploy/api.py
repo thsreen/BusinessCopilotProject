@@ -228,7 +228,26 @@ async def reset_session(session_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", "8000"))
+    import socket
+
     host = os.environ.get("HOST", "0.0.0.0")
+    start_port = int(os.environ.get("PORT", "8000"))
+    max_attempts = 100
+
+    port = start_port
+    for attempt in range(max_attempts):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((host, port))
+                break
+            except OSError:
+                if attempt < max_attempts - 1:
+                    port += 1
+                else:
+                    print(f"ERROR: No available port found after {max_attempts} attempts")
+                    sys.exit(1)
+
+    if port != start_port:
+        print(f"Port {start_port} was in use, using port {port} instead")
     print(f"Starting NovaCart Ops Copilot API on {host}:{port}")
     uvicorn.run(app, host=host, port=port)

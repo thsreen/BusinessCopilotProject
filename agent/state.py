@@ -58,6 +58,9 @@ class AgentState(TypedDict):
             was triggered (e.g. "prompt_tuned_verbosity", "style_adjusted").
         cached: Boolean flag set by the cache layer; when True the response was
             served from the in-memory LRU cache rather than re-generated.
+        classification: Route classification from the LLM-based router fallback
+            ("retrieval", "tools", or "llm"). Used by downstream nodes when
+            static keyword matching is insufficient.
         error: Error message string if any node raised an exception during this
             invocation; None otherwise.
         latency_ms: Wall-clock time in milliseconds consumed by the full graph
@@ -80,5 +83,6 @@ class AgentState(TypedDict):
     adaptation_data: Dict[str, Any]
     adaptation_applied: Optional[str]
     cached: bool
+    classification: Optional[str]
     error: Optional[str]
     latency_ms: float

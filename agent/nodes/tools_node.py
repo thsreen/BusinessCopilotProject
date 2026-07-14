@@ -80,6 +80,13 @@ def tools_node(state: AgentState) -> AgentState:
         selected_tool = "query_kpi"
         tool_args = {"query": user_text}
 
+    # --- Dynamic fallback: LLM router classified as tools ---
+    # If no static keywords matched but the LLM-based router determined
+    # this is a tools query, try a general KPI lookup.
+    if not selected_tool and state.get("classification") == "tools":
+        selected_tool = "query_kpi"
+        tool_args = {"query": user_text}
+
     if selected_tool:
         call_record = {"tool": selected_tool, "args": tool_args}
         try:
