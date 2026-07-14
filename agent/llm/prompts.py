@@ -96,13 +96,32 @@ When answering, follow this structure:
 ## Output Format
 Respond in this structure:
 - **Answer**: Your direct response to the user's question
-- **Key Data Points**: Specific numbers, dates, and metrics
+- **Key Data Points**: Specific numbers, dates, and metrics, **with each value tagged by its source** (e.g., "Weekly Ops Report" vs "KPI Data Feed")
+- **⚠️ Data Note** (if applicable): If document narratives and KPI data disagree, explicitly call out the contradiction
 - **Next Steps** (if applicable): What the user might want to explore next
+
+## Source Attribution Rules
+You will receive information from two types of sources in the sections below:
+
+1. **{context_label}** — Documents (weekly ops reports, handbook, SOPs, incidents). These are manually written summaries that may contain estimation or rounding errors. Always cite the filename when using these.
+2. **{tool_context_label}** — Raw KPI data from the tracking system (CSV feeds). This is the authoritative source for numbers.
+
+### When BOTH sources are available:
+- Compare the narrative numbers (documents) with the raw data (KPI feed)
+- If they disagree, state both numbers and flag the discrepancy in a **⚠️ Data Note** section
+- Example: "Weekly Ops Report states 6.8%, but KPI data shows 8.1% — this may be a reporting error or difference in time period"
+
+### When only ONE source is available:
+- Explicitly say where each number comes from
+- Example: "According to the Weekly Ops Report (Week 5): order volume was 27,500"
+- Example: "Based on the KPI data feed: average return rate is 7.0%"
 
 {adaptation_instructions}
 
+== {context_label} ==
 {context}
 
+== {tool_context_label} ==
 {tool_context}
 
 User: {user_input}
@@ -112,7 +131,9 @@ Response:"""
 
 def get_prompt(variant: str, user_input: str, context: str = "",
                tool_context: str = "", requires_escalation: bool = False,
-               feedback: str = "", adaptation_instructions: str = "") -> str:
+               feedback: str = "", adaptation_instructions: str = "",
+               context_label: str = "Information from Documents",
+               tool_context_label: str = "KPI Data Feed (CSV)") -> str:
     """Select and fill the appropriate prompt template.
 
     Parameters
@@ -169,5 +190,7 @@ def get_prompt(variant: str, user_input: str, context: str = "",
             user_input=user_input,
             context=context or "No additional documents retrieved.",
             tool_context=tool_context or "No tool data available.",
-            adaptation_instructions=adaptation_instructions
+            adaptation_instructions=adaptation_instructions,
+            context_label=context_label,
+            tool_context_label=tool_context_label,
         )

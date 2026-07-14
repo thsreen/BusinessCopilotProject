@@ -116,21 +116,19 @@ def llm_node(state: AgentState) -> AgentState:
             state["latency_ms"] = round((time.time() - start) * 1000, 1)
             return state
 
-    # --- Context assembly ---
+    # --- Context assembly with source labels ---
     context = ""
+    context_label = "Information from Documents"
     if state.get("retrieved_docs"):
-        # Truncate each document's content to 500 characters to keep the
-        # prompt within token limits while preserving key information.
-        context = "Relevant information:\n" + "\n".join(
+        context = "\n".join(
             f"- [{d.get('source','unknown')}] {d.get('content','')[:500]}"
             for d in state["retrieved_docs"]
         )
 
     tool_context = ""
+    tool_context_label = "KPI Data Feed (CSV)"
     if state.get("tool_results"):
-        # Serialise tool results as JSON; cap at 2000 characters to avoid
-        # overflowing the context window with large data dumps.
-        tool_context = "Data from systems:\n" + json.dumps(state["tool_results"], indent=2)[:2000]
+        tool_context = json.dumps(state["tool_results"], indent=2)[:2000]
 
     # --- Auto-tuning instructions from feedback patterns ---
     adaptation_instructions = get_adaptation_instructions(state)
@@ -143,6 +141,8 @@ def llm_node(state: AgentState) -> AgentState:
         state.get("requires_escalation", False),
         state.get("feedback"),
         adaptation_instructions,
+        context_label,
+        tool_context_label,
     )
 
     try:
