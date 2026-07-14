@@ -56,6 +56,9 @@ def _strip_confidence_line(text: str) -> str:
         text,
         flags=re.MULTILINE,
     ).strip()
+
+
+def llm_node(state: AgentState) -> AgentState:
     """
     LangGraph node — generate a response via the LLM.
 
