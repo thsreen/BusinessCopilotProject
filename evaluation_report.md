@@ -37,6 +37,36 @@
 - Escalation bypasses LLM entirely (tools_node handles it)
 - No write/delete/update tools exist in the codebase
 
+## Failure Case: KPI Query Misrouted as Knowledge Query
+
+### Root Cause
+The keyword `"what is"` in `KNOWLEDGE_KEYWORDS` was too broad. Every "What is the X?" query matched this keyword before reaching `TOOL_KEYWORDS`, routing KPI queries to document retrieval instead of the data tools.
+
+### Before (Broken)
+Query: "What is the current return rate?"
+
+The router checked KNOWLEDGE_KEYWORDS first. `"what is"` matched, so it routed to retrieval. Retrieval found return *policy* docs but no actual KPI values. The LLM generated a response with no data.
+
+```
+Confidence: 0.3
+Response: "I don't have specific information on the current return rate.
+           Based on general knowledge..."
+Docs retrieved: 4 (policy docs, not KPI data)
+Tools used: 0
+```
+
+### Fix
+Removed `"what is"` from `KNOWLEDGE_KEYWORDS` in `agent/intent.py`. Knowledge queries still route correctly via specific keywords (`"policy"`, `"sla"`, `"explain"`, `"tell me about"`).
+
+### After (Fixed)
+```
+Confidence: 0.8
+Response: "The current return rate is 8.1%.
+           Average: 7.0%, Min: 5.2%, Max: 8.9%"
+Docs retrieved: 0
+Tools used: 1 (query_kpi_data)
+```
+
 ## Known Issues
 
 1. Ollama latency is inconsistent (3-15s per query) — using OpenAI would reduce to <2s
