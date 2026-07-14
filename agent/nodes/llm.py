@@ -19,8 +19,7 @@ State modifications:
     - Sets state["error"] on failure.
 """
 
-import json
-import os
+import re
 import time
 from agent.state import AgentState
 from agent.llm.client import LLMClient
@@ -32,7 +31,31 @@ from agent.logging.logger import get_logger
 logger = get_logger(__name__)
 
 
-def llm_node(state: AgentState) -> AgentState:
+def _strip_confidence_line(text: str) -> str:
+    """Remove any ``**Confidence**:`` line the LLM may have generated.
+
+    The system prompt no longer asks for a confidence rating (the UI
+    displays the actual system confidence instead), but older cached
+    responses or model inertia may still produce one.  This function
+    strips it so there is no contradiction between the LLM's text and
+    the system's metadata.
+
+    Matches lines like:
+      - **Confidence**: High - based on data availability
+      - **Confidence**: Low / Medium
+
+    Args:
+        text: The raw LLM response text.
+
+    Returns:
+        Cleaned text with confidence lines removed.
+    """
+    return re.sub(
+        r'^-?\s?\*\*Confidence\*\*:.*(?:\n|$)',
+        '',
+        text,
+        flags=re.MULTILINE,
+    ).strip()
     """
     LangGraph node — generate a response via the LLM.
 
@@ -82,7 +105,7 @@ def llm_node(state: AgentState) -> AgentState:
     if not feedback:
         cached = cache.get(prompt_variant, user_text)
         if cached:
-            state["response"] = cached.get("response", "")
+            state["response"] = _strip_confidence_line(cached.get("response", ""))
             state["confidence"] = cached.get("confidence", 0.85)
             state["cached"] = True
             state["latency_ms"] = round((time.time() - start) * 1000, 1)
@@ -119,7 +142,7 @@ def llm_node(state: AgentState) -> AgentState:
 
     try:
         response = client.invoke(prompt)
-        state["response"] = response
+        state["response"] = _strip_confidence_line(response)
         state["cached"] = False
 
         # Derive confidence from the evidence available.

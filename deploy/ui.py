@@ -189,41 +189,30 @@ else:
                 requires_esc = msg.get("requires_escalation", False)
                 error = msg.get("error")
 
-                # Confidence badge
-                if confidence >= 0.75:
-                    conf_class = "confidence-high"
-                    conf_label = "HIGH"
-                elif confidence >= 0.4:
-                    conf_class = "confidence-med"
-                    conf_label = "MED"
+                if error:
+                    st.error(f"\u26a0\ufe0f **Error:** {error[:200]}")
+                if requires_esc:
+                    st.warning(
+                        "\U0001f6a8 **Escalation recommended** \u2014 This query may need a human analyst. "
+                        "Contact ops-lead@novacart.com for follow-up."
+                    )
+                if confidence < 0.4:
+                    st.warning(
+                        "\U0001f4c9 **Low confidence** \u2014 The response above is based on general knowledge "
+                        "without specific data backing. Please verify with a human analyst."
+                    )
+                elif confidence < 0.75:
+                    st.info(
+                        f"\U0001f4ca **Medium confidence ({confidence:.0%})** \u2014 "
+                        "Some data was available, but results should be cross-checked."
+                    )
                 else:
-                    conf_class = "confidence-low"
-                    conf_label = "LOW"
+                    st.success(f"\u2705 **High confidence ({confidence:.0%})** \u2014 Response is backed by data.")
 
-                cols = st.columns([1, 1, 4])
-                with cols[0]:
-                    st.markdown(
-                        f'<span class="{conf_class}">● {conf_label} ({confidence:.0%})</span>',
-                        unsafe_allow_html=True,
-                    )
-                with cols[1]:
-                    st.markdown(
-                        f'<span style="color:#888;font-size:0.8rem">⚡ {latency:.0f}ms</span>',
-                        unsafe_allow_html=True,
-                    )
-                with cols[2]:
-                    if requires_esc:
-                        st.markdown(
-                            '<span class="escalation-badge">⚠️ Escalation recommended</span>',
-                            unsafe_allow_html=True,
-                        )
-                    if error:
-                        st.markdown(
-                            f'<span class="error-badge">⚠️ {error[:60]}</span>',
-                            unsafe_allow_html=True,
-                        )
+                meta_cols = st.columns([1, 4])
+                with meta_cols[0]:
+                    st.caption(f"\u26a1 {latency:.0f}ms")
 
-                # Feedback buttons (only on last assistant message)
                 if i == len(st.session_state.messages) - 1:
                     fb_cols = st.columns([1, 10])
                     with fb_cols[0]:

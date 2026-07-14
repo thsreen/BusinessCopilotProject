@@ -97,7 +97,6 @@ When answering, follow this structure:
 Respond in this structure:
 - **Answer**: Your direct response to the user's question
 - **Key Data Points**: Specific numbers, dates, and metrics
-- **Confidence**: High/Medium/Low - based on data availability
 - **Next Steps** (if applicable): What the user might want to explore next
 
 {adaptation_instructions}
