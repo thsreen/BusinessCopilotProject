@@ -45,6 +45,9 @@ from agent.logging.logger import get_logger
 logger = get_logger("api")
 _executor = ThreadPoolExecutor(max_workers=4)
 
+# Track the actual bound port for the root page
+_port_actual: int = 8000
+
 # Simple in-memory rate limiter
 _requests: dict[str, list[float]] = {}
 RATE_LIMIT = int(os.environ.get("RATE_LIMIT_REQUESTS", "30"))
@@ -141,16 +144,28 @@ class HealthResponse(BaseModel):
     llm_provider: str
 
 
+@app.get("/")
+async def root():
+    """Root endpoint — returns an HTML page with API instructions."""
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse("""
+    <html><body style="font-family:sans-serif;max-width:700px;margin:40px auto">
+    <h1>NovaCart AI Operations Copilot</h1>
+    <p>API is running. Use these endpoints:</p>
+    <ul>
+      <li><a href="/health">GET /health</a> — Health check</li>
+      <li><b>POST /chat</b> — Send a chat message</li>
+      <li><b>POST /reset</b> — Reset session memory</li>
+    </ul>
+    <h3>Test with curl:</h3>
+    <pre>curl -X POST http://localhost:%d/chat -H "Content-Type: application/json" -d "{\\"message\\": \\"What is the return rate?\\"}"</pre>
+    </body></html>
+    """ % _port_actual)
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health():
-    """Health check endpoint.
-
-    Returns basic service metadata without invoking the agent graph.
-
-    Returns:
-        HealthResponse with current status, version, prompt variant,
-        and LLM provider.
-    """
+    """Health check endpoint."""
     return HealthResponse(
         status="ok",
         version="1.0.0",
@@ -249,5 +264,6 @@ if __name__ == "__main__":
 
     if port != start_port:
         print(f"Port {start_port} was in use, using port {port} instead")
+    _port_actual = port
     print(f"Starting NovaCart Ops Copilot API on {host}:{port}")
     uvicorn.run(app, host=host, port=port)
