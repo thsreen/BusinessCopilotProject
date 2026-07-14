@@ -216,7 +216,8 @@ def after_retrieval(state: AgentState) -> Literal["tools", "llm", "uncertainty"]
         return "llm"
 
     tool_indicators = ["kpi", "metric", "volume", "order volume",
-                       "average", "how many", "how much"]
+                       "return rate", "units shipped", "fulfillment time",
+                       "csat", "revenue", "average", "how many", "how much"]
     if any(kw in user_text for kw in tool_indicators):
         return "tools"
 

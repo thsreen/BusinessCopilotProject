@@ -22,7 +22,7 @@ Naming convention:
 # the RAG retrieval path over tool execution.
 KNOWLEDGE_KEYWORDS = [
     "policy", "procedure", "sop", "handbook", "guideline",
-    "what is", "how does", "explain", "define", "tell me about",
+    "how does", "explain", "define", "tell me about",
     "sla", "target", "threshold", "recall", "incident",
 ]
 
