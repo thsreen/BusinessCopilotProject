@@ -35,6 +35,8 @@ if "session_id" not in st.session_state:
     st.session_state.session_id = ""
 if "session_created" not in st.session_state:
     st.session_state.session_created = False
+if "pending_query" not in st.session_state:
+    st.session_state.pending_query = None
 
 
 def create_session() -> str:
@@ -132,17 +134,7 @@ with st.sidebar:
         ]:
             if st.button(label, use_container_width=True, key=f"q_{q[:20]}"):
                 st.session_state.messages.append({"role": "user", "content": q})
-                with st.spinner("Thinking..."):
-                    result = send_message(q)
-                if result:
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": result.get("response", "No response."),
-                        "confidence": result.get("confidence", 0.0),
-                        "latency_ms": result.get("latency_ms", 0),
-                        "requires_escalation": result.get("requires_escalation", False),
-                        "error": result.get("error"),
-                    })
+                st.session_state.pending_query = q
                 st.rerun()
 
     st.markdown("### Info")
@@ -246,10 +238,16 @@ else:
     prompt = st.chat_input("Ask about KPIs, policies, trends...")
     if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        with st.spinner("Thinking..."):
-            result = send_message(prompt)
+        st.session_state.pending_query = prompt
+        st.rerun()
+
+    # Process pending query (shows user message immediately, then fetches response)
+    if st.session_state.pending_query:
+        q = st.session_state.pending_query
+        st.session_state.pending_query = None
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                result = send_message(q)
         if result:
             st.session_state.messages.append({
                 "role": "assistant",
@@ -259,4 +257,4 @@ else:
                 "requires_escalation": result.get("requires_escalation", False),
                 "error": result.get("error"),
             })
-            st.rerun()
+        st.rerun()
