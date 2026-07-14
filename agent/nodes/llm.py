@@ -19,6 +19,8 @@ State modifications:
     - Sets state["error"] on failure.
 """
 
+import json
+import os
 import re
 import time
 from agent.state import AgentState
