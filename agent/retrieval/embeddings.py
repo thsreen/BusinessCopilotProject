@@ -1,21 +1,4 @@
-"""Embedding provider abstraction — supports Ollama, OpenAI, and HuggingFace.
 
-Provides a single *get_embeddings* factory function that returns a LangChain
-embedding model instance. The provider is selected via the environment variable
-``EMBEDDING_PROVIDER`` (defaults to ``"huggingface"`` if unset or unrecognised).
-
-Fallback chain:
-    1. If ``EMBEDDING_PROVIDER=openai`` and a valid API key is configured,
-       instantiate ``OpenAIEmbeddings`` (model ``text-embedding-3-small``).
-    2. If ``EMBEDDING_PROVIDER=ollama`` (or fallback), try
-       ``OllamaEmbeddings`` (model ``nomic-embed-text``) with a connectivity
-       test. If the test fails, clear the singleton and continue.
-    3. Final fallback — ``HuggingFaceEmbeddings`` (model ``all-MiniLM-L6-v2``)
-       from ``langchain_community``, which works fully offline.
-
-Once initialised the embedding model is cached as a module-level singleton so
-that repeated calls reuse the same instance without re-initialisation.
-"""
 import os
 from dotenv import load_dotenv
 
@@ -25,33 +8,8 @@ load_dotenv()
 # reused for the lifetime of the process.
 _embedding_model = None
 
-
 def get_embeddings():
-    """Get (or create) the embedding model based on configuration.
 
-    Checks the ``EMBEDDING_PROVIDER`` environment variable and attempts to
-    initialise the corresponding LangChain embeddings class. On failure it
-    falls through to the next provider in the chain. The result is cached in
-    the module-level ``_embedding_model`` variable.
-
-    Environment variables consumed:
-        - ``EMBEDDING_PROVIDER``: ``"openai"``, ``"ollama"``, or any other
-          value (falls back to HuggingFace).
-        - ``OPENAI_API_KEY``    : Required for the OpenAI provider. Ignored
-          if set to the placeholder ``"sk-your-key-here"``.
-        - ``OLLAMA_BASE_URL``   : Optional; defaults to
-          ``http://localhost:11434``.
-
-    Returns:
-        A LangChain ``Embeddings`` instance (``OpenAIEmbeddings``,
-        ``OllamaEmbeddings``, or ``HuggingFaceEmbeddings``).
-
-    Raises:
-        ImportError: If *none* of the providers could be loaded — this can
-                     happen when neither ``langchain-ollama``,
-                     ``langchain-openai``, nor ``sentence-transformers`` is
-                     installed.
-    """
     global _embedding_model
     if _embedding_model is not None:
         return _embedding_model

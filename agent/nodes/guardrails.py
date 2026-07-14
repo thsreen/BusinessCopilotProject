@@ -1,24 +1,6 @@
-"""
-Safety guardrails node — runs first in the graph pipeline.
-
-Purpose:
-    Inspects user input for disallowed content before it reaches
-    any other node. Three checks are performed in order:
-      1. PII detection — refuses to process if sensitive data is found.
-      2. Modification detection — refuses data/policy change requests.
-      3. Escalation detection — routes to tools if a human is requested.
-
-State modifications:
-    - Sets state["response"] with a refusal or escalation message.
-    - Sets state["confidence"] = 1.0 on refusal (deterministic block).
-    - Sets state["next_step"] to "end", "tools", or "router".
-    - Sets state["requires_escalation"] and state["escalation_reason"]
-      when escalation keywords are detected.
-"""
 
 import re
 from agent.state import AgentState
-
 
 # Each tuple: (regex_pattern, is_blocking)
 # is_blocking is reserved for future severity levels but kept for
@@ -51,18 +33,8 @@ ESCALATION_PATTERNS = [
     r"(not\s+helping|useless|wrong|incorrect)",
 ]
 
-
 def check_modification(text: str) -> tuple[bool, str]:
-    """
-    Scan *text* for modification/creation/deletion intents.
 
-    Args:
-        text: The raw user input string.
-
-    Returns:
-        A tuple of (is_modification_request, refusal_message).
-        If no modification intent is found, refusal_message is empty.
-    """
     for pattern, _ in MODIFICATION_PATTERNS:
         if re.search(pattern, text.lower()):
             # Return a clear, actionable refusal that points the user
@@ -75,57 +47,22 @@ def check_modification(text: str) -> tuple[bool, str]:
             )
     return False, ""
 
-
 def check_pii(text: str) -> bool:
-    """
-    Detect personally identifiable information in *text*.
 
-    Args:
-        text: The raw user input string.
-
-    Returns:
-        True if any PII pattern is matched, False otherwise.
-    """
     for pattern in PII_PATTERNS:
         if re.search(pattern, text):
             return True
     return False
 
-
 def check_escalation(text: str) -> bool:
-    """
-    Detect escalation or urgency signals in *text*.
 
-    Args:
-        text: The raw user input string.
-
-    Returns:
-        True if any escalation keyword is found, False otherwise.
-    """
     for pattern in ESCALATION_PATTERNS:
         if re.search(pattern, text.lower()):
             return True
     return False
 
-
 def guardrails_node(state: AgentState) -> AgentState:
-    """
-    LangGraph node — entry gate for all user input.
 
-    Checks are applied in priority order:
-      1. PII → hard block with response, end immediately.
-      2. Modification → hard block with refusal message, end immediately.
-      3. Escalation → set escalation flags, route to tools node.
-      4. Clear → route to router node for normal processing.
-
-    Args:
-        state: The shared AgentState dictionary. Reads ``user_input``
-            (or the last message content as fallback). Writes ``response``,
-            ``confidence``, ``next_step``, and optionally escalation fields.
-
-    Returns:
-        The mutated *state* dictionary.
-    """
     user_text = state.get("user_input", "")
     if not user_text and state.get("messages"):
         # Fallback: use the content of the most recent message when

@@ -1,28 +1,4 @@
-"""
-CLI entry point for the AI Operations Copilot.
 
-Provides an interactive REPL with colour-coded output, session tracking,
-slash commands, and feedback-driven auto-tuning.
-
-Usage:
-  python -m deploy.cli [--prompt-variant v3_structured] [--no-color] [--session <id>]
-
-Slash commands (available at runtime):
-  /quit /exit          — Exit the REPL.
-  /session             — Show current session ID, interaction count, and
-                         number of cached responses.
-  /variant <name>      — Switch prompt strategy at runtime (v1_minimal,
-                         v2_safety_first, v3_structured).
-  /feedback positive   — Record positive feedback for the last response.
-  /feedback negative   — Record negative feedback; automatically re-runs
-                         the last query so the agent can adapt.
-
-Auto-tuning:
-  When ``/feedback negative`` is given, the CLI:
-    1. Re-runs ``run_agent()`` with ``feedback="negative"``.
-    2. If the result contains an ``adaptation_applied`` value, prints a
-       cyan ``[Auto-tuning activated]`` banner.
-"""
 import os
 import sys
 import argparse
@@ -32,31 +8,8 @@ load_dotenv()
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__))))
 
-
 def main():
-    """Parse CLI arguments and start the interactive REPL loop.
 
-    The REPL loop:
-      1. Reads user input from stdin.
-      2. Interprets slash commands (/quit, /session, /variant, /feedback).
-      3. For regular input, calls ``run_agent()`` and pretty-prints the
-         response alongside metadata (latency, confidence, cache status).
-      4. Maintains an in-memory history list for the /feedback command
-         to know the last user query.
-
-    Command-line arguments:
-        --prompt-variant: One of v1_minimal, v2_safety_first, v3_structured.
-            Overrides the PROMPT_VARIANT env var (default: v3_structured).
-        --no-color: Disable ANSI colour codes (useful for logging to files
-            or terminals that don't support colour).
-        --session: A previously obtained session ID for memory continuity.
-            If empty, a new session is created on the first query.
-
-    Side effects:
-        - Writes to stdout with ANSI colour codes (unless ``--no-color``).
-        - Calls ``run_agent()`` which in turn writes to the memory store
-          and the response cache.
-    """
     parser = argparse.ArgumentParser(
         description="NovaCart AI Operations Copilot - CLI Interface"
     )
@@ -175,7 +128,6 @@ def main():
         if confidence < 0.5:
             print(f"{YELLOW}[Low confidence - please verify]{RESET}")
         print(f"[{latency:.0f}ms | confidence: {confidence:.0%}]\n")
-
 
 if __name__ == "__main__":
     main()

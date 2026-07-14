@@ -1,19 +1,3 @@
-"""Prompt templates for the AI Operations Copilot - 3 variants.
-
-This module defines three prompt variants of increasing sophistication:
-
-1. **V1 Minimal** — A bare-bones instruction template useful for quick
-   testing or when context size must be strictly minimised.
-2. **V2 Safety-First** — A moderate-length prompt that enforces safety
-   constraints (read-only, no legal/financial advice) and includes
-   sections for retrieved context and tool results.
-3. **V3 Structured** — The production variant.  It adds a reasoning
-   framework (UNDERSTAND → RETRIEVE → ANALYZE → RESPOND), lists
-   available data sources, and enforces a structured output format.
-
-The ``get_prompt()`` helper selects and fills the correct template
-at runtime.
-"""
 
 # ── V1 Minimal ──────────────────────────────────────────────────────────────
 # Intended for low-latency scenarios or debugging.  Only the user's input
@@ -23,7 +7,6 @@ V1_MINIMAL = """Answer the user's question concisely.
 User: {user_input}
 
 Assistant:"""
-
 
 # ── V2 Safety-First ─────────────────────────────────────────────────────────
 # Adds role definition, mandatory safety rules, and placeholders for
@@ -60,7 +43,6 @@ V2_SAFETY_FIRST = """You are NovaCart's AI Operations Copilot, a decision-suppor
 User Question: {user_input}
 
 Assistant:"""
-
 
 # ── V3 Structured ───────────────────────────────────────────────────────────
 # Production-grade prompt with a reasoning framework, explicit output
@@ -128,46 +110,12 @@ User: {user_input}
 
 Response:"""
 
-
 def get_prompt(variant: str, user_input: str, context: str = "",
                tool_context: str = "", requires_escalation: bool = False,
                feedback: str = "", adaptation_instructions: str = "",
                context_label: str = "Information from Documents",
                tool_context_label: str = "KPI Data Feed (CSV)") -> str:
-    """Select and fill the appropriate prompt template.
 
-    Parameters
-    ----------
-    variant : str
-        One of ``"v1_minimal"``, ``"v2_safety_first"``, or
-        ``"v3_structured"`` (default fallback).
-    user_input : str
-        The user's current query.
-    context : str, optional
-        Retrieved document snippets.  If empty, a placeholder is inserted.
-    tool_context : str, optional
-        Results from tool calls (APIs, database queries, etc.).
-        If empty, a placeholder is inserted.
-    requires_escalation : bool, optional
-        Reserved for future use (e.g. to inject escalation instructions).
-        Currently unused by the templates but accepted for forward
-        compatibility.
-    feedback : str, optional
-        Reserved for future use (e.g. for iterative refinement).
-    adaptation_instructions : str, optional
-        Dynamic instructions injected at runtime (e.g. few-shot
-        examples, tone overrides, or agent-specific guidance).
-
-    Returns
-    -------
-    str
-        The fully formatted prompt string, ready to send to ``LLMClient.invoke()``.
-
-    Notes
-    -----
-    The ``context`` and ``tool_context`` parameters default to descriptive
-    placeholders so the LLM never receives empty fields.
-    """
     # Ensure adaptation_instructions is never None so .format() does not
     # insert the literal string "None" into the prompt.
     adaptation_instructions = adaptation_instructions or ""

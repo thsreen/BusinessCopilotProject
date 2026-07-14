@@ -1,31 +1,4 @@
 # -*- coding: utf-8 -*-
-"""Master synthetic data generator for the NovaCart AI Operations Copilot.
-
-This script produces the full set of CSV, Markdown, and JSON files that the
-agent and its evaluation harness rely on.  Every dataset is deterministic
-(seeded with ``random.seed(42)``) so that runs are reproducible.
-
-Output layout::
-
-    data/
-    ├── daily_metrics.csv              # 180 days of company-level KPIs
-    ├── daily_category_metrics.csv     # Per-category breakdown
-    ├── daily_warehouse_metrics.csv    # Per-warehouse breakdown
-    ├── daily_channel_metrics.csv      # Per-channel breakdown
-    ├── product_categories.csv         # Static product catalogue
-    ├── docs/
-    │   ├── 01_company_overview.md …   # Knowledge-base handbook (10 sections)
-    │   ├── week_01_… .md …            # Weekly ops reports (16 weeks)
-    │   ├── incident_001_… .md …       # Incident reports (5 incidents)
-    │   ├── sop_001_… .md …            # Standard operating procedures (4 SOPs)
-    │   └── escalation_logs.json       # Structured escalation history
-
-Usage
------
-    python data/generate_data.py
-
-Idempotent — safe to run multiple times (overwrites files in place).
-"""
 
 import csv
 import json
@@ -44,25 +17,21 @@ DOCS_DIR = os.path.join(OUTPUT_DIR, "docs")
 # Helpers
 # ---------------------------------------------------------------------------
 
-
 def daterange(start: str, days: int):
     """Yield ``YYYY-MM-DD`` strings from *start* for *days* days."""
     start_dt = datetime.strptime(start, "%Y-%m-%d")
     for i in range(days):
         yield (start_dt + timedelta(days=i)).strftime("%Y-%m-%d")
 
-
 def write_md(filename: str, content: str):
     """Write a Markdown file to the ``docs/`` subdirectory."""
     with open(os.path.join(DOCS_DIR, filename), "w", encoding="utf-8") as f:
         f.write(content)
 
-
 def write_json(filename: str, data):
     """Write JSON to the ``docs/`` subdirectory (indented for readability)."""
     with open(os.path.join(DOCS_DIR, filename), "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
-
 
 def noisy(value: float, pct: float = 0.05) -> float:
     """Add ±*pct* % random noise to *value* and round to 2 decimals.
@@ -70,7 +39,6 @@ def noisy(value: float, pct: float = 0.05) -> float:
     Used to make generated metrics look more realistic.
     """
     return round(value * (1 + random.uniform(-pct, pct)), 2)
-
 
 # Short-hand constants used in Markdown tables (keeps lines shorter).
 LE = "<="
@@ -276,36 +244,12 @@ HANDBOOK_SECTIONS = {
     ),
 }
 
-
 # ---------------------------------------------------------------------------
 # Daily metric generation
 # ---------------------------------------------------------------------------
 
-
 def generate_daily_metrics():
-    """Generate four CSV files with 180 days of synthetic business data.
 
-    Files created
-    ~~~~~~~~~~~~~
-    * ``daily_metrics.csv``           – 12 company-wide KPIs per day
-    * ``daily_category_metrics.csv``  – per-category volume / returns / revenue / rating
-    * ``daily_warehouse_metrics.csv`` – per-warehouse volume / fulfillment / headcount
-    * ``daily_channel_metrics.csv`    – per-channel volume / wait time / CSAT
-
-    Data characteristics
-    ~~~~~~~~~~~~~~~~~~~~
-    - **Seasonality**: volume peaks in Nov–Dec (×1.4), dips in summer (×0.85).
-    - **Weekly pattern**: weekends get 10–30 % more orders.
-    - **Trend**: base volume grows 15 % over the 180-day window.
-    - **Known incidents** embedded in the data:
-        * 2026-06-12 : Warehouse B conveyor failure (fulfillment ×2.5, volume ×0.7).
-        * 2026-07-05 : Payment gateway outage (fulfillment ×1.3, volume ×0.85).
-        * 2026-04-15–16 : Mobile app regression (fulfillment ×1.8, volume ×0.8).
-    - **Warehouse A staffing shortage**: begins Week 8 (day 56) with fulfillment
-      degrading linearly from that point.
-    - **Electronics return spike**: 2026-03-22–28 (defective headphone batch).
-    - **Mobile regression**: 2026-04-01–14 (increased wait times, lower CSAT).
-    """
     rows = []
     categories = [
         "Electronics", "Clothing", "Home & Garden", "Books",
@@ -471,7 +415,6 @@ def generate_daily_metrics():
         w.writeheader()
         w.writerows(ch_rows)
     print(f"Generated {len(ch_rows)} channel metric rows")
-
 
 # ---------------------------------------------------------------------------
 # Weekly ops reports (Markdown)
@@ -1116,11 +1059,9 @@ PRODUCT_CATEGORIES = [
      "top_sku": "AUTO-PART-BRAKE-PAD-C2"},
 ]
 
-
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
-
 
 def main():
     """Generate all synthetic data and write it to ``data/`` and ``data/docs/``."""
@@ -1154,7 +1095,6 @@ def main():
     print(f"Product Categories: {len(PRODUCT_CATEGORIES)} written")
 
     print("\nAll synthetic data generated successfully!")
-
 
 if __name__ == "__main__":
     main()

@@ -1,12 +1,4 @@
-"""Tool: Analyze trends in KPI data over time.
 
-Computes descriptive statistics, split-half trend direction, and anomaly
-detection for a requested KPI metric over a configurable look-back window.
-
-This module reuses the *load_csv*, *resolve_metric*, and file-path constants
-from the *query_kpi* module so that data-loading behaviour stays consistent
-across tools.
-"""
 import csv
 import os
 from datetime import datetime, timedelta
@@ -19,7 +11,6 @@ from agent.tools.query_kpi import (
     CHANNEL_FILE,
 )
 
-
 def get_trend_analysis(
     query: str = "",
     metric: str = "",
@@ -28,50 +19,7 @@ def get_trend_analysis(
     warehouse: str = "",
     channel: str = "",
 ) -> dict:
-    """Analyze trends for a given metric over a recent time window.
 
-    The function:
-        1. Selects the appropriate CSV source (category / warehouse / channel /
-           aggregate) and date range.
-        2. Extracts the target metric column's values.
-        3. Splits the series in half and compares the averages to determine
-           trend direction (up / down / stable).
-        4. Detects anomalies as values more than 1.5 standard deviations from
-           the mean.
-
-    Args:
-        query:    Free-text metric description (used when *metric* is empty).
-                  Delegated to *agent.tools.query_kpi.resolve_metric*.
-        metric:   Canonical CSV column name; takes precedence over *query*.
-        days:     Number of days to look back from today (default 30).
-                  If the data is from 2026 and the current date exceeds the
-                  available range, the entire 2026-H1 window is used instead.
-        category: If non-empty, query *daily_category_metrics.csv* and filter
-                  by this category (case-insensitive).
-        warehouse:If non-empty, query *daily_warehouse_metrics.csv* and filter
-                  by this warehouse letter (case-insensitive).
-        channel:  If non-empty, query *daily_channel_metrics.csv* and filter
-                  by this channel name (case-insensitive).
-
-    Returns:
-        A dictionary with keys:
-            - metric           : The resolved column name.
-            - period           : ``{"start": ..., "end": ...}``.
-            - data_points      : Number of observations.
-            - average          : Mean of all values (rounded to 2 dp).
-            - trend_direction  : ``"up"``, ``"down"``, or ``"stable"``.
-            - pct_change       : Percentage change between the two halves.
-            - first_half_avg   : Average of the first half (rounded to 2 dp).
-            - second_half_avg  : Average of the second half (rounded to 2 dp).
-            - min              : Minimum observed value.
-            - max              : Maximum observed value.
-            - anomalies_detected : Count of outlier data points.
-            - anomaly_dates    : Up to 5 dates with anomalous values.
-            - latest_trend     : A human-readable summary string.
-
-        If insufficient data is available (< 2 points) the result includes
-        an ``"error"`` key and the raw values.
-    """
     # Resolve metric name – explicit parameter wins over free-text query
     if metric:
         metric_name = metric

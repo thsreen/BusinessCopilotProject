@@ -1,28 +1,4 @@
-"""
-FastAPI web service for the AI Operations Copilot.
 
-Provides three endpoints:
-  - ``GET /health`` — Health check returning status, version, and
-    active prompt variant.
-  - ``POST /chat`` — Main chat endpoint. Accepts a ``ChatRequest`` JSON
-    body, runs the agent via ``run_agent()`` in a thread pool, and
-    returns a ``ChatResponse``.
-  - ``POST /reset`` — Reset a session's memory.
-
-Rate limiting:
-  Simple in-memory sliding-window rate limiter keyed by client IP.
-  Default: 30 requests per 60-second window. Configurable via the
-  ``RATE_LIMIT_REQUESTS`` and ``RATE_LIMIT_WINDOW_SEC`` environment
-  variables. When the limit is exceeded the endpoint returns HTTP 429.
-
-CORS:
-  Configured from the ``CORS_ORIGINS`` env var (comma-separated list).
-  Defaults to ``http://localhost:3000,http://localhost:8000``.
-
-Thread pool:
-  A ``ThreadPoolExecutor(max_workers=4)`` is used to run the synchronous
-  ``run_agent()`` call without blocking the asyncio event loop.
-"""
 import os
 import sys
 import time
@@ -53,22 +29,8 @@ _requests: dict[str, list[float]] = {}
 RATE_LIMIT = int(os.environ.get("RATE_LIMIT_REQUESTS", "30"))
 RATE_WINDOW = int(os.environ.get("RATE_LIMIT_WINDOW_SEC", "60"))
 
-
 def _check_rate_limit(client_ip: str):
-    """Enforce a sliding-window rate limit for *client_ip*.
 
-    Purges timestamps older than the window, then checks whether the
-    count of requests in the current window exceeds the limit.
-
-    Args:
-        client_ip: The client's IP address (or ``x-forwarded-for`` value).
-
-    Raises:
-        HTTPException (429): If the rate limit has been exceeded.
-
-    Side effects:
-        Appends the current timestamp to the in-memory list for *client_ip*.
-    """
     now = time.time()
     window_start = now - RATE_WINDOW
     if client_ip not in _requests:
@@ -93,41 +55,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 class ChatRequest(BaseModel):
-    """Request body for the ``POST /chat`` endpoint.
 
-    Attributes:
-        message: The user's question or command (required, non-empty).
-        session_id: Optional session identifier for memory continuity.
-        feedback: Optional feedback signal ("positive" or "negative")
-            to trigger auto-tuning.
-        prompt_variant: Optional prompt strategy override.
-    """
     message: str
     session_id: Optional[str] = ""
     feedback: Optional[str] = None
     prompt_variant: Optional[str] = None
 
-
 class ChatResponse(BaseModel):
-    """Response body returned by the ``POST /chat`` endpoint.
 
-    Attributes:
-        response: The assistant's textual reply.
-        session_id: The active session identifier.
-        confidence: Self-assessed confidence score (0.0 – 1.0).
-        latency_ms: Total end-to-end latency in milliseconds.
-        requires_escalation: Whether the agent recommends human escalation.
-        error: Error message if something went wrong; None otherwise.
-    """
     response: str
     session_id: str
     confidence: float
     latency_ms: float
     requires_escalation: bool
     error: Optional[str] = None
-
 
 class HealthResponse(BaseModel):
     """Response body for the ``GET /health`` endpoint.
@@ -142,7 +84,6 @@ class HealthResponse(BaseModel):
     version: str
     prompt_variant: str
     llm_provider: str
-
 
 @app.get("/")
 async def root():
@@ -162,7 +103,6 @@ async def root():
     </body></html>
     """ % _port_actual)
 
-
 @app.get("/health", response_model=HealthResponse)
 async def health():
     """Health check endpoint."""
@@ -173,29 +113,9 @@ async def health():
         llm_provider=os.environ.get("LLM_PROVIDER", "ollama"),
     )
 
-
 @app.post("/chat", response_model=ChatResponse)
 async def chat(chat_request: ChatRequest, fast_request: Request):
-    """Main chat endpoint.
 
-    Accepts a user message, runs the agent synchronously in a thread
-    pool, and returns the response.
-
-    Rate limiting is applied based on the client's IP (or the
-    ``x-forwarded-for`` header if behind a reverse proxy).
-
-    Args:
-        chat_request: The validated JSON body (see ``ChatRequest``).
-        fast_request: FastAPI's built-in Request object for extracting
-            client IP metadata.
-
-    Returns:
-        ChatResponse with the agent's answer and metadata.
-
-    Raises:
-        HTTPException (400): If the message is blank.
-        HTTPException (429): If the client's rate limit is exceeded.
-    """
     if not chat_request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
@@ -224,39 +144,21 @@ async def chat(chat_request: ChatRequest, fast_request: Request):
         error=result.get("error"),
     )
 
-
 @app.get("/session")
 async def create_session():
-    """Create a new session and return its ID.
 
-    This is a lightweight endpoint that only creates a memory session
-    without invoking the agent graph — useful for UIs that need a
-    session ID before sending the first message.
-
-    Returns:
-        A dict with the new ``session_id``.
-    """
     from agent.memory.manager import MemoryManager
     mm = MemoryManager()
     sid = mm.create_session()
     return {"session_id": sid}
 
-
 @app.post("/reset")
 async def reset_session(session_id: str):
-    """Reset (clear) the memory for a given session.
 
-    Args:
-        session_id: The session identifier to reset.
-
-    Returns:
-        A dict confirming the reset with the session_id echoed back.
-    """
     from agent.memory.manager import MemoryManager
     mm = MemoryManager()
     mm.reset_session(session_id)
     return {"status": "reset", "session_id": session_id}
-
 
 if __name__ == "__main__":
     import uvicorn

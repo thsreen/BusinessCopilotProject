@@ -1,19 +1,4 @@
-"""ChromaDB vector store wrapper for document retrieval.
 
-Provides a lazy-initialised, cache-aware interface to a persistent ChromaDB
-collection. The vector store is automatically rebuilt (re-indexed) when the
-set of source ``.md`` files in ``data/docs/`` changes, so the index always
-reflects the current documentation without manual intervention.
-
-Key behaviours:
-    - The store is initialised once and cached as a module-level singleton.
-    - On first call (or when *force_rebuild* is ``True``), the list of
-      indexed files is compared against the current files on disk; if they
-      differ, chunking and re-indexing is triggered.
-    - An index cache file (``.indexed_files.json``) persists the last-known
-      file set so changes are detected across process restarts.
-    - If no source documents exist, an empty Chroma collection is returned.
-"""
 import json
 import os
 from dotenv import load_dotenv
@@ -34,40 +19,8 @@ INDEX_CACHE = os.path.join(CHROMA_DIR, ".indexed_files.json")
 # Module-level singleton – populated on first successful creation.
 _vector_store = None
 
-
 def get_vector_store(force_rebuild: bool = False):
-    """Get (or create) the ChromaDB vector store.
 
-    If the store has already been initialised and *force_rebuild* is
-    ``False``, the cached instance is returned immediately.
-
-    When a rebuild is required (either explicitly via *force_rebuild* or
-    because the set of ``.md`` files in ``data/docs/`` has changed), the
-    function:
-        1. Chunks all documents via *chunk_all_docs*.
-        2. Embeds each chunk and persists the collection to ``CHROMA_DIR``.
-        3. Writes the indexed file set to ``INDEX_CACHE`` for future
-           change detection.
-
-    If no documents are found (empty ``docs/`` directory), an empty ChromaDB
-    collection is returned so that similarity searches degrade gracefully
-    (returning no results rather than raising).
-
-Args:
-        force_rebuild: If ``True``, skip the change-detection cache and
-                       unconditionally re-index all documents.
-
-    Returns:
-        A ``langchain_chroma.Chroma`` instance. Any initialisation failure
-        (embedding errors, corrupted Chroma directory, JSON cache corruption)
-        will raise an exception; the caller (e.g. ``retrieval_node``) is
-        responsible for catching and degrading gracefully.
-
-    Raises:
-        ImportError: If ``langchain_chroma`` is not installed.
-        Exception: Propagated from embedding/chunking layer or ChromaDB
-                   initialisation on failure.
-"""
     global _vector_store
     if _vector_store is not None and not force_rebuild:
         return _vector_store
@@ -141,15 +94,6 @@ Args:
 
     return _vector_store
 
-
 def rebuild_vector_store():
-    """Force a full rebuild of the vector store.
 
-    Convenience wrapper around *get_vector_store* with *force_rebuild=True*.
-    Useful for administrative endpoints or manual re-indexing after bulk
-    document updates.
-
-    Returns:
-        The (newly created) ``Chroma`` instance.
-    """
     return get_vector_store(force_rebuild=True)

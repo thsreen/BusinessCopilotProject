@@ -1,36 +1,10 @@
-"""Unified LLM client supporting OpenAI and Ollama.
 
-Architecture
------------
-This module provides a single LLMClient class that abstracts over two
-language model backends: OpenAI (GPT-4o-mini, etc.) and Ollama (local
-models like Llama 3.2).  The active provider is selected at construction
-time via the ``LLM_PROVIDER`` environment variable.
-
-Fallback behaviour
-------------------
-If the primary provider raises any exception, ``invoke()`` automatically
-attempts the other provider before giving up.  This makes the system
-resilient in environments where, e.g., the local Ollama server may be
-temporarily unavailable but an OpenAI key is available, or vice versa.
-
-Environment variables
----------------------
-LLM_PROVIDER     : "openai" | "ollama" (default: "ollama")
-LLM_MODEL        : model name for Ollama (default: "llama3.2:3b")
-LLM_TEMPERATURE  : sampling temperature (default: "0.3")
-LLM_MAX_TOKENS   : max generated tokens  (default: "1024")
-OPENAI_API_KEY   : API key for OpenAI
-OPENAI_MODEL     : model name for OpenAI (default: "gpt-4o-mini")
-OLLAMA_BASE_URL  : Ollama server URL     (default: "http://localhost:11434")
-"""
 import os
 from dotenv import load_dotenv
 
 # Load .env file at import time so environment variables are available
 # for the entire module's lifetime.
 load_dotenv()
-
 
 class LLMClient:
     """Unified client that routes to OpenAI or Ollama based on config.
@@ -57,28 +31,7 @@ class LLMClient:
         self.max_tokens = int(os.environ.get("LLM_MAX_TOKENS", "1024"))
 
     def invoke(self, prompt: str, **kwargs) -> str:
-        """Send a prompt to the configured LLM provider with automatic fallback.
 
-        Parameters
-        ----------
-        prompt : str
-            The user message or system prompt to send.
-        **kwargs
-            Additional arguments forwarded to the provider-specific method.
-            Supported keys:
-            - ``model``: override the model name for this call only.
-
-        Returns
-        -------
-        str
-            The model's text response, or a user-facing error message if
-            both providers fail.
-
-        Side effects
-        ------------
-        Logs error information via ``print`` for connectivity issues
-        (integration with a proper logging system is left to the caller).
-        """
         try:
             if self.provider == "openai":
                 return self._invoke_openai(prompt, **kwargs)
@@ -102,25 +55,7 @@ class LLMClient:
                 return "I encountered an error connecting to both language model providers. Please check your API configuration (Ollama running? OpenAI key set?) and try again."
 
     def _invoke_openai(self, prompt: str, **kwargs) -> str:
-        """Call the OpenAI Chat Completions API.
 
-        Parameters
-        ----------
-        prompt : str
-            The user message to send.
-        **kwargs
-            May contain ``model`` to override the default OpenAI model.
-
-        Returns
-        -------
-        str
-            The assistant's response content, stripped of leading/trailing whitespace.
-
-        Raises
-        ------
-        openai.OpenAIError
-            Propagated on API failure (auth, rate-limit, server error).
-        """
         from openai import OpenAI
 
         api_key = os.environ.get("OPENAI_API_KEY", "")
@@ -140,27 +75,7 @@ class LLMClient:
         return response.choices[0].message.content.strip()
 
     def _invoke_ollama(self, prompt: str, **kwargs) -> str:
-        """Call the Ollama ``/api/generate`` endpoint via HTTP.
 
-        Parameters
-        ----------
-        prompt : str
-            The user message to send.
-        **kwargs
-            May contain ``model`` to override the default Ollama model.
-
-        Returns
-        -------
-        str
-            The model's response text, or a user-facing error message if
-            the connection fails or the endpoint returns an error.
-
-        Raises
-        ------
-        httpx.HTTPStatusError
-            Propagated when the server returns a non-2xx status (after
-            raise_for_status).
-        """
         import httpx
 
         base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")

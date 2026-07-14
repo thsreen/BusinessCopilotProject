@@ -1,14 +1,3 @@
-"""Tool schemas and metadata for the Operations Copilot.
-
-This module defines TOOL_DEFINITIONS — a list of dictionaries that each
-describe one callable tool in the OpenAI / LangChain function-calling format.
-Every entry includes the tool's name, a natural-language description, and a
-JSON Schema object specifying the expected parameters and their types.
-
-These definitions are consumed by the agent's LLM to let it decide when and
-how to invoke each tool. Keeping them in a single file makes it easy to audit
-the surface area exposed to the model.
-"""
 
 TOOL_DEFINITIONS = [
     {

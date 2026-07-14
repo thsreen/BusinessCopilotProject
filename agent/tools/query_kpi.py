@@ -1,23 +1,7 @@
-"""Tool: Query KPI data from CSV datasets.
 
-Loads daily-operational metrics from four CSV files stored under the project's
-``data/`` directory:
-
-    - daily_metrics.csv            (top-level aggregate)
-    - daily_category_metrics.csv   (broken down by product category)
-    - daily_warehouse_metrics.csv  (broken down by warehouse A/B/C)
-    - daily_channel_metrics.csv    (broken down by web / mobile / phone)
-
-The *query_kpi_data* function selects the appropriate file based on the
-supplied *category*, *warehouse*, or *channel* filter, resolves natural-
-language metric aliases (e.g. "fulfillment time" → *fulfillment_time_avg*),
-parses human-readable period strings, and returns summary statistics plus
-the last 10 data points.
-"""
 import csv
 import os
 from datetime import datetime, timedelta
-
 
 # ---------------------------------------------------------------------------
 # Paths – resolved relative to the project root (three levels up from this
@@ -52,37 +36,15 @@ METRIC_ALIASES = {
     "inventory accuracy": "inventory_accuracy",
 }
 
-
 def load_csv(filepath: str) -> list[dict]:
-    """Load a CSV file into a list of dictionaries (one per row).
 
-    Args:
-        filepath: Absolute or relative path to the CSV file.
-
-    Returns:
-        A list of dicts whose keys are the CSV header columns. Returns an
-        empty list if the file does not exist.
-    """
     if not os.path.exists(filepath):
         return []
     with open(filepath, "r") as f:
         return list(csv.DictReader(f))
 
-
 def parse_period(period: str) -> tuple[str, str]:
-    """Parse a human-readable period string into an inclusive start/end date.
 
-    Supports expressions such as "last 7 days", "this month", "this week",
-    "last 30 days", "last 90 days", and "last quarter". Unrecognised values
-    default to the entire 2026-H1 range (the current data window).
-
-    Args:
-        period: A free-text time-period description.
-
-    Returns:
-        A tuple ``(start_date, end_date)`` where both values are formatted
-        as ``YYYY-MM-DD`` strings.
-    """
     today = datetime.now()
     period_lower = period.lower()
     if "last 7" in period_lower or "7 day" in period_lower or "week" in period_lower:
@@ -107,27 +69,13 @@ def parse_period(period: str) -> tuple[str, str]:
     # Fallback: the entire available 2026 window
     return "2026-01-01", "2026-06-30"
 
-
 def resolve_metric(query: str) -> tuple[str, str]:
-    """Resolve a free-text query string to a canonical metric column name.
 
-    Iterates over *METRIC_ALIASES* and returns the first match found as a
-    substring of *query*. This allows users to refer to metrics
-    conversationally (e.g. "fulfillment time" → *fulfillment_time_avg*).
-
-    Args:
-        query: The user's natural-language metric description.
-
-    Returns:
-        A tuple ``(canonical_column_name, matched_alias)``. Defaults to
-        ``("order_volume", "order volume")`` when no alias matches.
-    """
     query_lower = query.lower()
     for alias, metric in METRIC_ALIASES.items():
         if alias in query_lower:
             return metric, alias
     return "order_volume", "order volume"
-
 
 def query_kpi_data(
     query: str = "",
@@ -137,41 +85,7 @@ def query_kpi_data(
     warehouse: str = "",
     channel: str = "",
 ) -> dict:
-    """Query KPI data and return summary statistics.
 
-    The function selects a CSV source based on the most specific filter
-    supplied (category > warehouse > channel > aggregate), then filters
-    rows by the requested date range and extracts values for the target
-    metric column. If the column is not found in the filtered data it
-    attempts a fallback — scanning available numeric columns.
-
-    Args:
-        query:    Free-text metric description (used when *metric* is empty).
-        metric:   Canonical column name; takes precedence over *query*.
-        period:   Human-readable time range (parsed by *parse_period*).
-        category: If non-empty, query *daily_category_metrics.csv* filtered
-                  by this category name (case-insensitive).
-        warehouse:If non-empty, query *daily_warehouse_metrics.csv* filtered
-                  by this warehouse letter (case-insensitive).
-        channel:  If non-empty, query *daily_channel_metrics.csv* filtered
-                  by this channel name (case-insensitive).
-
-    Returns:
-        A dictionary with keys:
-            - metric       : The resolved metric column name.
-            - period       : ``{"start": ..., "end": ...}``.
-            - records      : Number of data points found.
-            - average      : Mean of the numeric values (rounded to 2 dp).
-            - min          : Minimum value (or *None* when empty).
-            - max          : Maximum value (or *None* when empty).
-            - latest_value : The most recent data point's value.
-            - data         : Last 10 records, each ``{"date": ..., "value": ...}``.
-        On failure the dict contains an ``"error"`` key instead.
-
-    Raises:
-        No explicit exceptions; all I/O errors are absorbed and reported
-        via the ``"error"`` return field.
-    """
     # Resolve the metric name – explicit *metric* parameter wins over *query*
     if metric:
         metric_name = metric

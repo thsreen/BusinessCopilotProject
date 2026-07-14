@@ -38,7 +38,6 @@ if "session_created" not in st.session_state:
 if "pending_query" not in st.session_state:
     st.session_state.pending_query = None
 
-
 def create_session() -> str:
     """Get a new session ID from the API (lightweight, no LLM call)."""
     try:
@@ -50,7 +49,6 @@ def create_session() -> str:
     except requests.Timeout:
         st.error("API did not respond in time. Check that the server is running.")
     return ""
-
 
 def send_message(message: str, feedback: str = None) -> dict | None:
     """Send a message to the API and return the response dict."""
@@ -76,7 +74,6 @@ def send_message(message: str, feedback: str = None) -> dict | None:
     except requests.Timeout:
         st.error("Request timed out after 120s")
     return None
-
 
 # ── Sidebar ────────────────────────────────────────────────────────────────
 
@@ -145,7 +142,6 @@ with st.sidebar:
         st.markdown(f"**Prompt:** `{health.get('prompt_variant', '?')}`")
     except Exception:
         st.markdown("**API Status:** ⚠️ Offline")
-
 
 # ── Main chat area ─────────────────────────────────────────────────────────
 

@@ -1,30 +1,3 @@
-"""Phase 2 - V1a: Rule-Based Baseline Agent
-============================================
-
-Pure keyword-matching agent.  No LLM, no LangGraph, no external API calls.
-
-Purpose in the project
-----------------------
-This file defines the simplest possible "assistant" so we can contrast it
-against more sophisticated versions (v1b, v2, etc.).  It demonstrates the
-limitations of a purely rule-based approach:
-
-    * Brittle matching – "fulfillment time" works but "how long to ship" does not.
-    * No natural-language understanding – synonyms, typos, and paraphrases all fail.
-    * No memory of conversation context – each turn is independent.
-    * No safety reasoning – refusals are also keyword-based and easily bypassed.
-    * No integration with real data – all responses are hard-coded strings.
-
-Usage
------
-    python baselines/v1a_rule_based.py
-
-Then type questions at the prompt.  Type ``quit``, ``exit``, or ``bye`` to stop.
-
-File location
--------------
-This file lives under ``baselines/`` to keep it separate from the main
-application code in ``src/``."""
 
 import datetime
 import json
@@ -79,21 +52,8 @@ SAFETY_PATTERNS = [
     (r"set\s+(the\s+)?(target|threshold|limit|sla)", "I cannot change configuration settings. Please escalate to an operations manager."),
 ]
 
-
 def log_interaction(user_input: str, response: str, method: str = "rule_match"):
-    """Append one interaction to the JSON-lines log file.
 
-    Parameters
-    ----------
-    user_input : str
-        The raw text the user typed.
-    response : str
-        The text the assistant replied with.
-    method : str
-        How the response was produced — ``"rule_match"``, ``"safety_refusal"``,
-        ``"escalation"``, or ``"fallback"``.  This makes it easy to analyse
-        later which code path fired for each query.
-    """
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     entry = {
         "timestamp": datetime.datetime.now().isoformat(),
@@ -104,22 +64,8 @@ def log_interaction(user_input: str, response: str, method: str = "rule_match"):
     with open(LOG_FILE, "a") as f:
         f.write(json.dumps(entry) + "\n")
 
-
 def check_safety(user_input: str) -> str | None:
-    """Test *user_input* against known refusal patterns.
 
-    Two layers are checked (in order):
-
-    1. ``SAFETY_PATTERNS`` — regex-based checks that catch multi-word
-       destructive phrases (e.g. "change the return policy").
-    2. ``REFUSAL_KEYWORDS`` — simple substring checks for verbs like
-       "delete", "override", etc.
-
-    Returns
-    -------
-    str or None
-        A refusal message if a pattern matched, else ``None``.
-    """
     user_input_lower = user_input.lower()
     for pattern, refusal_msg in SAFETY_PATTERNS:
         if re.search(pattern, user_input_lower):
@@ -128,7 +74,6 @@ def check_safety(user_input: str) -> str | None:
         if kw in user_input_lower:
             return f"I am a decision-support only system and cannot '{kw}' any data or settings. Please escalate to an operations analyst if you need changes made."
     return None
-
 
 def check_escalation(user_input: str) -> str | None:
     """Decide whether the user is asking to speak to a human.
@@ -142,20 +87,8 @@ def check_escalation(user_input: str) -> str | None:
             return "Your request has been noted. To escalate to a human analyst, please contact the operations team at ops-lead@novacart.com with your reference details."
     return None
 
-
 def get_response(user_input: str) -> str:
-    """Produce a reply for *user_input* using a strict priority chain.
 
-    Priority (first match wins)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    1. Safety refusal (regex, then keyword)
-    2. Escalation request
-    3. Keyword match against ``RESPONSES``
-    4. Generic fallback ("I don't know")
-
-    Every path calls :func:`log_interaction` so the session can be replayed
-    or analysed later.
-    """
     # 1. Check safety
     safety_msg = check_safety(user_input)
     if safety_msg:
@@ -179,7 +112,6 @@ def get_response(user_input: str) -> str:
     fallback = "I'm sorry, I don't have information about that. I can answer questions about fulfillment, return rates, CSAT, order volume, warehouses, and KPIs. Try rephrasing your question."
     log_interaction(user_input, fallback, "fallback")
     return fallback
-
 
 def main():
     """REPL loop: read a line, reply via :func:`get_response`, repeat."""
@@ -208,7 +140,6 @@ def main():
         print(f"Assistant: {response}\n")
 
     print(f"\nSession logged. {len(history)} interactions recorded.")
-
 
 if __name__ == "__main__":
     main()

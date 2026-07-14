@@ -1,22 +1,4 @@
-"""
-Shared intent classification constants for routing and tool selection.
 
-These keyword lists are used by the router node, the guardrails node,
-and the graph's ``after_retrieval`` conditional edge to decide whether
-a query should be handled by:
-  - **Knowledge retrieval** (RAG from SOP / policy documents).
-  - **Tool execution** (KPI queries, trend analysis, escalation).
-  - **Uncertainty** (the agent cannot find relevant information).
-  - **Safety refusal** (write / destructive intent detected elsewhere).
-
-Each list is ordered roughly by specificity; the router typically checks
-``ESCAPATION_KEYWORDS`` first, then ``TOOL_KEYWORDS``, then
-``KNOWLEDGE_KEYWORDS``.
-
-Naming convention:
-  Plural nouns to indicate they are lists of substrings, not regex
-  patterns. Matching uses ``any(kw in user_input for kw in LIST)``.
-"""
 # Substrings indicating the user is asking about documented processes,
 # policies, SLAs, or incident records. When matched, the agent prefers
 # the RAG retrieval path over tool execution.

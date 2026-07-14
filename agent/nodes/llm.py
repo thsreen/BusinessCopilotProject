@@ -1,23 +1,3 @@
-"""
-LLM invocation node — calls the configured language model with assembled context.
-
-Purpose:
-    After retrieval and/or tool execution, this node:
-      1. Checks a response cache (skipped when feedback is present).
-      2. Assembles context from retrieved docs and tool results.
-      3. Retrieves any auto-tuning instructions from the feedback store.
-      4. Builds the prompt via ``get_prompt`` with the chosen variant.
-      5. Invokes the LLM via ``LLMClient.invoke``.
-      6. Assigns a confidence score based on available evidence.
-      7. Caches the response for future cache hits.
-
-State modifications:
-    - Sets state["response"] — the LLM output text.
-    - Sets state["confidence"] — float 0.0–1.0 based on evidence.
-    - Sets state["cached"] — bool indicating cache hit.
-    - Sets state["latency_ms"] — round-trip time in milliseconds.
-    - Sets state["error"] on failure.
-"""
 
 import json
 import os
@@ -32,26 +12,8 @@ from agent.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
-
 def _strip_confidence_line(text: str) -> str:
-    """Remove any ``**Confidence**:`` line the LLM may have generated.
 
-    The system prompt no longer asks for a confidence rating (the UI
-    displays the actual system confidence instead), but older cached
-    responses or model inertia may still produce one.  This function
-    strips it so there is no contradiction between the LLM's text and
-    the system's metadata.
-
-    Matches lines like:
-      - **Confidence**: High - based on data availability
-      - **Confidence**: Low / Medium
-
-    Args:
-        text: The raw LLM response text.
-
-    Returns:
-        Cleaned text with confidence lines removed.
-    """
     return re.sub(
         r'^-?\s?\*\*Confidence\*\*:.*(?:\n|$)',
         '',
@@ -59,40 +21,8 @@ def _strip_confidence_line(text: str) -> str:
         flags=re.MULTILINE,
     ).strip()
 
-
 def llm_node(state: AgentState) -> AgentState:
-    """
-    LangGraph node — generate a response via the LLM.
 
-    Pipeline within this node:
-      1. **Cache lookup** — if the same (variant, user_text) pair was
-         previously answered and no new feedback is present, return the
-         cached response immediately.
-      2. **Context assembly** — concatenate retrieved documents and
-         tool results into plain-text / JSON context blocks.
-      3. **Adaptation instructions** — pull any prompt-tuning rules
-         that were automatically generated from past negative feedback.
-      4. **Prompt construction** — delegate to ``get_prompt`` which
-         selects the template variant and fills in all sections.
-      5. **LLM call** — ``client.invoke(prompt)`` with error handling.
-      6. **Confidence scoring** — see confidence heuristics below.
-      7. **Cache write** — store the result for future requests.
-
-    Confidence heuristics:
-        - docs + tools available → 0.9
-        - either docs or tools   → 0.8
-        - neither                → 0.4 (LLM knowledge only)
-
-    Args:
-        state: The shared AgentState dictionary. Reads ``user_input``,
-            ``messages``, ``retrieved_docs``, ``tool_results``,
-            ``requires_escalation``, ``feedback``, and the environment
-            variable ``PROMPT_VARIANT``. Writes ``response``,
-            ``confidence``, ``cached``, ``latency_ms``, and ``error``.
-
-    Returns:
-        The mutated *state* dictionary.
-    """
     start = time.time()
     client = LLMClient()
     cache = get_cache()
