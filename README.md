@@ -1,6 +1,6 @@
 # NovaCart Ops Copilot
 
-AI assistant for business operations at NovaCart e-commerce. Answers KPI queries, policy questions, trend analysis, and escalations.
+AI assistant for business operations. Answers KPI queries, policy questions, trend analysis, and escalations.
 
 ## Setup
 
@@ -9,7 +9,7 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Edit `.env` — set `LLM_PROVIDER=ollama` and make sure Ollama is running with `llama3.2:3b`.
+Edit `.env` — add your OpenAI API key. That's it.
 
 ## Run
 
@@ -17,13 +17,17 @@ Edit `.env` — set `LLM_PROVIDER=ollama` and make sure Ollama is running with `
 python deploy\cli.py
 ```
 
-Or with the web UI:
+Or web UI:
 
 ```powershell
-python deploy\api.py       # Terminal 1
-streamlit run deploy\ui.py -- 8001  # Terminal 2
+python deploy\api.py
+streamlit run deploy\ui.py -- 8001
 ```
 
-## Data
+## Docs
 
-Synthetic NovaCart data is in `data/`. Vector store and SQLite are auto-created on first run.
+- `problem_framing.md` — Persona, scope, success criteria
+- `evaluation_report.md` — Test results, evidence logs, failure case
+- `engineering_justification.md` — Architecture decisions
+- `demo_script.md` — 5 demo interactions
+- `EVALUATOR.md` — Instructions for evaluators

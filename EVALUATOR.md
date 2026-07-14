@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Python 3.11+
-- Ollama installed (https://ollama.com) with `llama3.2:3b` pulled (`ollama pull llama3.2:3b`)
+- An OpenAI API key (provided in `.env.example`)
 - Git
 
 ## Setup
@@ -13,10 +13,10 @@ git clone https://github.com/thsreen/BusinessCopilotProject.git
 cd BusinessCopilotProject
 copy .env.example .env
 pip install -r requirements.txt
-pip install streamlit langchain-chroma
 ```
 
-Edit `.env` — set `LLM_PROVIDER=ollama`. Verify Ollama is running with `ollama list`.
+Edit `.env` — add the OpenAI API key where it says `sk-your-key-here`.  
+Everything else is pre-configured. No Ollama needed.
 
 ## Run
 

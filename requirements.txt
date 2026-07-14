@@ -11,8 +11,12 @@ langchain-community>=0.3.0  # Community integrations (Chroma vector store, etc.)
 langchain-openai>=0.2.0   # OpenAI / Azure OpenAI chat model wrapper
 langchain-ollama>=0.2.0   # Ollama local model wrapper
 
+# ── UI ─────────────────────────────────────────────────────────────────────
+streamlit>=1.30.0         # Web UI for chat interface
+
 # ── Vector store & embeddings ─────────────────────────────────────────────
 chromadb>=0.5.0           # Chroma vector database (used for RAG retrieval)
+langchain-chroma>=0.1.0   # LangChain Chroma integration
 sentence-transformers>=2.2.0  # Local embedding models (fallback when no API)
 
 # ── LLM API ───────────────────────────────────────────────────────────────
