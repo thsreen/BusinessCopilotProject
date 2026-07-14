@@ -225,6 +225,23 @@ async def chat(chat_request: ChatRequest, fast_request: Request):
     )
 
 
+@app.get("/session")
+async def create_session():
+    """Create a new session and return its ID.
+
+    This is a lightweight endpoint that only creates a memory session
+    without invoking the agent graph — useful for UIs that need a
+    session ID before sending the first message.
+
+    Returns:
+        A dict with the new ``session_id``.
+    """
+    from agent.memory.manager import MemoryManager
+    mm = MemoryManager()
+    sid = mm.create_session()
+    return {"session_id": sid}
+
+
 @app.post("/reset")
 async def reset_session(session_id: str):
     """Reset (clear) the memory for a given session.

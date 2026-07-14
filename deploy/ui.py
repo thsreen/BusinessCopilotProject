@@ -38,19 +38,15 @@ if "session_created" not in st.session_state:
 
 
 def create_session() -> str:
-    """Send a minimal message to get a session ID from the API."""
+    """Get a new session ID from the API (lightweight, no LLM call)."""
     try:
-        resp = requests.post(
-            f"{API_BASE}/chat",
-            json={"message": "hello", "session_id": ""},
-            timeout=30,
-        )
+        resp = requests.get(f"{API_BASE}/session", timeout=5)
         if resp.ok:
             return resp.json().get("session_id", "")
     except requests.ConnectionError:
         st.error(f"Cannot connect to API at {API_BASE}")
     except requests.Timeout:
-        st.error("API did not respond within 30s. The LLM may be slow to start.")
+        st.error("API did not respond in time. Check that the server is running.")
     return ""
 
 
