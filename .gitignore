@@ -26,3 +26,7 @@ feedback_store.json
 
 # macOS metadata
 .DS_Store
+
+# Virtual environment
+venv/
+.venv/
