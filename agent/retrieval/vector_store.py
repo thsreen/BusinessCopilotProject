@@ -53,18 +53,21 @@ def get_vector_store(force_rebuild: bool = False):
     collection is returned so that similarity searches degrade gracefully
     (returning no results rather than raising).
 
-    Args:
+Args:
         force_rebuild: If ``True``, skip the change-detection cache and
                        unconditionally re-index all documents.
 
     Returns:
-        A ``langchain_chroma.Chroma`` instance, or ``None`` if initialisation
-        fails entirely.
+        A ``langchain_chroma.Chroma`` instance. Any initialisation failure
+        (embedding errors, corrupted Chroma directory, JSON cache corruption)
+        will raise an exception; the caller (e.g. ``retrieval_node``) is
+        responsible for catching and degrading gracefully.
 
     Raises:
-        May raise ``ImportError`` if ``langchain_chroma`` is not installed,
-        or exceptions from the underlying embedding/chunking layer.
-    """
+        ImportError: If ``langchain_chroma`` is not installed.
+        Exception: Propagated from embedding/chunking layer or ChromaDB
+                   initialisation on failure.
+"""
     global _vector_store
     if _vector_store is not None and not force_rebuild:
         return _vector_store
@@ -129,13 +132,12 @@ def get_vector_store(force_rebuild: bool = False):
 
     # Either no rebuild was needed, or rebuild was attempted but produced
     # no chunks. Load the existing collection (which may be empty).
-    try:
-        _vector_store = Chroma(
-            embedding_function=embeddings,
-            persist_directory=CHROMA_DIR,
-        )
-    except Exception:
-        _vector_store = None
+    # Any exception from the Chroma constructor will propagate to the caller
+    # (retrieval_node catches and degrades gracefully).
+    _vector_store = Chroma(
+        embedding_function=embeddings,
+        persist_directory=CHROMA_DIR,
+    )
 
     return _vector_store
 
