@@ -38,17 +38,19 @@ if "session_created" not in st.session_state:
 
 
 def create_session() -> str:
-    """Send a hello message to get a session ID."""
+    """Send a minimal message to get a session ID from the API."""
     try:
         resp = requests.post(
             f"{API_BASE}/chat",
             json={"message": "hello", "session_id": ""},
-            timeout=10,
+            timeout=30,
         )
         if resp.ok:
             return resp.json().get("session_id", "")
     except requests.ConnectionError:
         st.error(f"Cannot connect to API at {API_BASE}")
+    except requests.Timeout:
+        st.error("API did not respond within 30s. The LLM may be slow to start.")
     return ""
 
 
@@ -101,18 +103,51 @@ with st.sidebar:
 
     if not st.session_state.session_created:
         if st.button("🆕 Start New Session", use_container_width=True):
-            sid = create_session()
+            with st.spinner("Connecting to API..."):
+                sid = create_session()
             if sid:
                 st.session_state.session_id = sid
                 st.session_state.session_created = True
                 st.session_state.messages = []
                 st.rerun()
+            else:
+                st.error("Could not create session. Is the API running?")
     else:
         st.markdown(f"**ID:** `{st.session_state.session_id[:12]}...`")
-        if st.button("🔄 New Session", use_container_width=True):
-            st.session_state.session_id = create_session()
-            st.session_state.messages = []
-            st.rerun()
+        if st.button("\U0001f504 New Session", use_container_width=True):
+            with st.spinner("Creating new session..."):
+                sid = create_session()
+            if sid:
+                st.session_state.session_id = sid
+                st.session_state.messages = []
+                st.rerun()
+            else:
+                st.error("Failed to create new session")
+
+    if st.session_state.session_created:
+        st.markdown("---")
+        st.markdown("**Quick Tests**")
+        for label, q in [
+            ("📈 Return Rate", "What is the current return rate?"),
+            ("📋 CSAT Trend", "How is our CSAT score trending?"),
+            ("📦 Fulfillment SLA", "What is our SLA for fulfillment?"),
+            ("📄 Return Policy", "Explain the return policy"),
+            ("🚨 Escalate", "Escalate to a human manager"),
+        ]:
+            if st.button(label, use_container_width=True, key=f"q_{q[:20]}"):
+                st.session_state.messages.append({"role": "user", "content": q})
+                with st.spinner("Thinking..."):
+                    result = send_message(q)
+                if result:
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": result.get("response", "No response."),
+                        "confidence": result.get("confidence", 0.0),
+                        "latency_ms": result.get("latency_ms", 0),
+                        "requires_escalation": result.get("requires_escalation", False),
+                        "error": result.get("error"),
+                    })
+                st.rerun()
 
     st.markdown("### Info")
     st.markdown(f"**API:** `{API_BASE}`")
@@ -122,30 +157,6 @@ with st.sidebar:
         st.markdown(f"**Prompt:** `{health.get('prompt_variant', '?')}`")
     except Exception:
         st.markdown("**API Status:** ⚠️ Offline")
-
-    st.markdown("---")
-    st.markdown("**Quick Tests**")
-    for label, q in [
-        ("📈 Return Rate", "What is the current return rate?"),
-        ("📋 CSAT Trend", "How is our CSAT score trending?"),
-        ("📦 Fulfillment SLA", "What is our SLA for fulfillment?"),
-        ("📄 Return Policy", "Explain the return policy"),
-        ("🚨 Escalate", "Escalate to a human manager"),
-    ]:
-        if st.button(label, use_container_width=True, key=f"q_{q[:20]}"):
-            st.session_state.messages.append({"role": "user", "content": q})
-            with st.spinner("Thinking..."):
-                result = send_message(q)
-            if result:
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": result.get("response", "No response."),
-                    "confidence": result.get("confidence", 0.0),
-                    "latency_ms": result.get("latency_ms", 0),
-                    "requires_escalation": result.get("requires_escalation", False),
-                    "error": result.get("error"),
-                })
-            st.rerun()
 
 
 # ── Main chat area ─────────────────────────────────────────────────────────
